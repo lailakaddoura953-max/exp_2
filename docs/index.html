@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truck View: Camera Alignment Check</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <svg class="icon-truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="6" width="18" height="10" rx="2"/>
+                        <circle cx="6" cy="19" r="2"/>
+                        <circle cx="14" cy="19" r="2"/>
+                        <path d="M19 6h3l2 4v4h-2"/>
+                    </svg>
+                    <h1>Truck View: Camera Alignment Check</h1>
+                </div>
+                <div class="system-info">
+                    
+                    
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container main-content">
+        <!-- Stats Overview -->
+        <section class="stats-section">
+            <div class="stat-card">
+               
+                <div class="stat-content">
+                    <div class="stat-value">4</div>
+                    <div class="stat-label">Active Cameras</div>
+                </div>
+            </div>
+            <div class="stat-card">
+               
+                <div class="stat-content">
+                    <div class="stat-value">60-70</div>
+                    <div class="stat-label">FPS Processing</div>
+                </div>
+            </div>
+            <div class="stat-card">
+              
+                <div class="stat-content">
+                    <div class="stat-value">100+</div>
+                    <div class="stat-label">Features/Camera</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Kanban Board -->
+        <section class="kanban-board">
+            <!-- Normal Operation Column -->
+            <div class="kanban-column">
+                <div class="column-header status-normal">
+                    <span class="status-icon">✓</span>
+                    <h2>Normal Operation</h2>
+                    <span class="count">1</span>
+                </div>
+                <div class="column-content">
+                    <div class="scenario-card" data-scenario="normal">
+                        <div class="card-header">
+                            <h3>Aligned Cameras</h3>
+                            <span class="priority-badge priority-none">No Issues</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="description">All 4 cameras are properly aligned. Diamond markers connected at center.</p>
+                            <div class="metrics">
+                                <div class="metric">
+                                    <span class="metric-label">Status:</span>
+                                    <span class="metric-value status-ok">✓ Operational</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Alignment:</span>
+                                    <span class="metric-value">100%</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Last Check:</span>
+                                    <span class="metric-value">Just now</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-primary" onclick="viewScenario('normal')">
+                                <span>▶</span> View Demo
+                            </button>
+                            <button class="btn btn-secondary" onclick="showDetails('normal')">
+                                Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Low Priority Column -->
+            <div class="kanban-column">
+                <div class="column-header status-warning">
+                    <span class="status-icon">⚠</span>
+                    <h2>Misaligned - Low Priority</h2>
+                    <span class="count">2</span>
+                </div>
+                <div class="column-content">
+                    <div class="scenario-card" data-scenario="minor-1">
+                        <div class="card-header">
+                            <h3>Camera 1: Minor Shift</h3>
+                            <span class="priority-badge priority-low">Low</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="description">Minor misalignment detected. Diamond mostly connected. Within tolerance.</p>
+                            <div class="metrics">
+                                <div class="metric">
+                                    <span class="metric-label">Impact Type:</span>
+                                    <span class="metric-value">Pothole</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Rotation:</span>
+                                    <span class="metric-value">±2°</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Translation:</span>
+                                    <span class="metric-value">±15px</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-primary" onclick="viewScenario('minor-1')">
+                                <span>▶</span> View Demo
+                            </button>
+                            <button class="btn btn-secondary" onclick="showDetails('minor-1')">
+                                Details
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="scenario-card" data-scenario="minor-2">
+                        <div class="card-header">
+                            <h3>Camera 0: Wind Gust</h3>
+                            <span class="priority-badge priority-low">Low</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="description">Slight adjustment from wind. System compensating. No action required.</p>
+                            <div class="metrics">
+                                <div class="metric">
+                                    <span class="metric-label">Impact Type:</span>
+                                    <span class="metric-value">Wind</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Rotation:</span>
+                                    <span class="metric-value">±1.5°</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Translation:</span>
+                                    <span class="metric-value">±12px</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-primary" onclick="viewScenario('minor-2')">
+                                <span>▶</span> View Demo
+                            </button>
+                            <button class="btn btn-secondary" onclick="showDetails('minor-2')">
+                                Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Critical Column -->
+            <div class="kanban-column">
+                <div class="column-header status-critical">
+                    <span class="status-icon">🚨</span>
+                    <h2>Misaligned - Critical</h2>
+                    <span class="count">2</span>
+                </div>
+                <div class="column-content">
+                    <div class="scenario-card" data-scenario="critical-1">
+                        <div class="card-header">
+                            <h3>Camera 2: Debris Impact</h3>
+                            <span class="priority-badge priority-critical">Critical</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="description">⚠️ <strong>ALERT:</strong> Major misalignment! Diamond broken. Immediate recalibration needed.</p>
+                            <div class="metrics">
+                                <div class="metric">
+                                    <span class="metric-label">Impact Type:</span>
+                                    <span class="metric-value alert-text">Debris</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Rotation:</span>
+                                    <span class="metric-value alert-text">±8°</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Translation:</span>
+                                    <span class="metric-value alert-text">±60px</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-danger" onclick="viewScenario('critical-1')">
+                                <span>▶</span> View Demo
+                            </button>
+                            <button class="btn btn-secondary" onclick="showDetails('critical-1')">
+                                Details
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="scenario-card" data-scenario="critical-2">
+                        <div class="card-header">
+                            <h3>Camera 3: Strong Wind</h3>
+                            <span class="priority-badge priority-critical">Critical</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="description">⚠️ <strong>ALERT:</strong> Severe displacement detected. Diamond misaligned. Action required.</p>
+                            <div class="metrics">
+                                <div class="metric">
+                                    <span class="metric-label">Impact Type:</span>
+                                    <span class="metric-value alert-text">Wind</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Rotation:</span>
+                                    <span class="metric-value alert-text">±7°</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Translation:</span>
+                                    <span class="metric-value alert-text">±55px</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-danger" onclick="viewScenario('critical-2')">
+                                <span>▶</span> View Demo
+                            </button>
+                            <button class="btn btn-secondary" onclick="showDetails('critical-2')">
+                                Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Full Impact Scenario Section -->
+        <section class="impact-scenario-section">
+            <h2 class="section-title">
+               
+                Complete Impact Scenario Timeline
+            </h2>
+            <div class="timeline-card">
+                <p class="timeline-description">
+                    Complete sequence showing all impact events in real-time. 
+                    System detects and responds to both minor and critical misalignments.
+                </p>
+                <button class="btn btn-large btn-primary" onclick="viewScenario('full-timeline')">
+                    <span>▶</span> Watch Full Impact Scenario (350 frames)
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal for Video Display -->
+    <div id="videoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Scenario Playback</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="videoContainer" class="video-container">
+                    <!-- Video will be injected here -->
+                </div>
+                <div id="scenarioInfo" class="scenario-info">
+                    <!-- Scenario details will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+# ==============================================================================
+# Core Runtime Dependencies for Deep Learning Misalignment Detection System
+# ==============================================================================
+# 
+# This file contains the minimum packages required to run the system in production.
+# For development dependencies (testing, code quality), see requirements-dev.txt
+#
+# Installation: pip install -r requirements.txt
+#
+# Hardware Requirements:
+# - Training: NVIDIA GPU with 8GB+ VRAM (CUDA 6.1+) or AMD GPU with ROCm
+# - Inference: NVIDIA GPU with 4GB+ VRAM or NVIDIA Jetson (Xavier, Orin)
+# - System RAM: 16GB for training, 8GB for inference
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Deep Learning Framework
+# ------------------------------------------------------------------------------
+# PyTorch is the foundation for all neural network models in this system.
+# Version 2.0+ is required for:
+# - Native Automatic Mixed Precision (AMP) support for memory efficiency
+# - Improved CUDA performance and memory management
+# - Better support for gradient checkpointing
+#
+# Installation Notes:
+# - For NVIDIA GPUs: This will install the CUDA-enabled version
+# - For AMD GPUs: Follow PyTorch ROCm installation instructions at pytorch.org
+# - For CPU-only (not recommended): Use torch==2.0.0+cpu from PyTorch website
+torch>=2.0.0
+
+# ------------------------------------------------------------------------------
+# Computer Vision Utilities
+# ------------------------------------------------------------------------------
+# torchvision provides:
+# - Image preprocessing and normalization (transforms)
+# - Common dataset utilities
+# - Pre-trained model components (we use some convolution utilities)
+torchvision>=0.15.0
+
+# ------------------------------------------------------------------------------
+# Configuration Management
+# ------------------------------------------------------------------------------
+# PyYAML enables human-readable YAML configuration files for:
+# - Model architecture selection (LiteFlowNet2 vs SpyNet)
+# - Hyperparameters (learning rate, batch size, etc.)
+# - Operational mode (neural_network, rule_based, hybrid)
+# - Deployment settings (device, resolution, thresholds)
+pyyaml>=6.0
+
+# ------------------------------------------------------------------------------
+# Training Visualization and Monitoring
+# ------------------------------------------------------------------------------
+# TensorBoard provides real-time training monitoring:
+# - Loss curves (training and validation)
+# - Learning rate schedules
+# - GPU memory utilization
+# - Sample prediction visualizations
+# - Hyperparameter comparison across runs
+tensorboard>=2.13.0
+
+# ------------------------------------------------------------------------------
+# Numerical Computing
+# ------------------------------------------------------------------------------
+# NumPy is used throughout for:
+# - Efficient array operations and data manipulation
+# - Image data preprocessing before PyTorch conversion
+# - Ground truth label generation for augmented data
+# - Evaluation metric calculations
+numpy>=1.24.0
+
+# ------------------------------------------------------------------------------
+# Image Processing Libraries
+# ------------------------------------------------------------------------------
+# OpenCV (cv2) provides:
+# - Additional image transformations for augmentation
+# - Image I/O operations
+# - Color space conversions
+# - Geometric transformations (rotation, translation, affine)
+opencv-python>=4.7.0
+
+# Pillow provides:
+# - Basic image file I/O (JPEG, PNG loading/saving)
+# - Simple image transformations
+# - Compatibility with PyTorch transforms
+pillow>=9.5.0
+
+# ------------------------------------------------------------------------------
+# Data Validation and Configuration Schemas
+# ------------------------------------------------------------------------------
+# Pydantic enables:
+# - Runtime type checking for configuration files
+# - Automatic validation of YAML configuration parameters
+# - Clear error messages when configuration is invalid
+# - Structured data models for checkpoints and outputs
+pydantic>=2.0.0
+
+# ------------------------------------------------------------------------------
+# Data Analysis and Visualization
+# ------------------------------------------------------------------------------
+# matplotlib for plotting and visualization:
+# - Training curves and loss plots
+# - Data distribution analysis
+# - Network architecture diagrams
+# - Optical flow visualization
+matplotlib>=3.7.0
+
+# seaborn for statistical visualizations:
+# - Distribution plots
+# - Correlation heatmaps
+# - Dataset statistics
+# - Beautiful default styling
+seaborn>=0.12.0
+
+# pandas for data manipulation and analysis:
+# - Dataset statistics and summaries
+# - Training metrics tracking
+# - CSV file handling
+# - DataFrame operations
+pandas>=2.0.0
+
+# ------------------------------------------------------------------------------
+# Additional Notes
+# ------------------------------------------------------------------------------
+#
+# CUDA Installation:
+# PyTorch requires CUDA to be installed separately. Check compatibility:
+# https://pytorch.org/get-started/locally/
+#
+# Typical CUDA versions:
+# - PyTorch 2.0: CUDA 11.7 or 11.8
+# - PyTorch 2.1+: CUDA 11.8 or 12.1
+#
+# Verify CUDA installation:
+#   python -c "import torch; print(torch.cuda.is_available())"
+#
+# ROCm for AMD GPUs:
+# If using AMD GPUs, follow ROCm installation instructions at:
+# https://pytorch.org/get-started/locally/
+# Then install PyTorch with ROCm support instead of CUDA version
+#
+# Memory Considerations:
+# - These packages typically require 3-5GB disk space
+# - PyTorch with CUDA support is the largest component (~2GB)
+# - Model checkpoints will require additional 100MB-2GB per saved model

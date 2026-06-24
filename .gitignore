@@ -1,0 +1,192 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# C++
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Build directories
+build/
+build-*/
+cmake-build-*/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Test outputs
+test_output/
+*.log
+*.xml
+
+# Data files
+*.mp4
+*.avi
+*.mov
+*.h264
+*.h265
+test_data/videos/
+test_data/outputs/
+
+# Documentation
+docs/_build/
+
+# OS
+Thumbs.db
+desktop.ini
+
+# ==============================================================================
+# Deep Learning and PyTorch Specific
+# ==============================================================================
+
+# PyTorch model checkpoints and weights
+# These files can be very large (100MB - several GB)
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+*.onnx
+
+# TensorBoard logs and event files
+# These accumulate over multiple training runs
+runs/
+tensorboard_logs/
+events.out.tfevents.*
+*.tfevents
+
+# Training outputs and model artifacts
+checkpoints/
+saved_models/
+model_zoo/
+outputs/
+experiments/
+*.pkl
+*.pickle
+
+# KITTI Dataset files
+# The KITTI dataset is large (~50GB+) and should not be committed
+kitti_data/
+KITTI/
+data/kitti/
+data/raw/
+data/processed/
+*.zip
+*.tar.gz
+*.tar
+
+# Generated augmented data
+augmented_data/
+synthetic_data/
+generated/
+
+# Cached preprocessed data
+# These improve loading speed but can be regenerated
+.cache/
+cache/
+*.npy
+*.npz
+*.hdf5
+*.h5
+
+# GPU profiling and debugging outputs
+*.nvprof
+*.qdrep
+*.sqlite
+nsys_profile/
+prof/
+
+# Jupyter Notebook checkpoints (if using notebooks for analysis)
+.ipynb_checkpoints/
+*.ipynb
+
+# Python environment files
+# For reproducibility, use requirements.txt instead
+Pipfile
+Pipfile.lock
+poetry.lock
+
+# Evaluation results and comparison reports
+results/
+evaluation/
+comparison_reports/
+metrics/
+*.csv
+*.json
+*.yaml
+!config/*.yaml
+!config/*.json
+
+# Large binary files
+*.bin
+*.dat
+
+# Temporary visualization outputs
+visualizations/
+plots/
+figures/
+
+# Configuration overrides (keep templates, ignore user configs)
+config/user_*.yaml
+config/local_*.yaml
