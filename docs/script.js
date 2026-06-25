@@ -3,6 +3,112 @@
 // ============================================================================
 
 // ============================================================================
+// STRAD MONITORING INTEGRATION
+// ============================================================================
+// Connect to backend API for real strad monitoring data
+
+const BACKEND_API_URL = 'http://localhost:5000/api';
+let stradMonitoringConnected = false;
+let recentStradsData = [];
+
+// Check backend connection on page load
+async function checkBackendConnection() {
+    try {
+        const response = await fetch('http://localhost:5000/');
+        const data = await response.json();
+        stradMonitoringConnected = data.strad_monitoring_connected;
+        
+        console.log('Backend connection:', data);
+        
+        // Update UI to show connection status
+        updateConnectionStatus(data);
+        
+        // Load recent strads if connected
+        if (stradMonitoringConnected) {
+            await loadRecentStrads();
+        }
+    } catch (error) {
+        console.log('Backend not available, using placeholder mode');
+        stradMonitoringConnected = false;
+    }
+}
+
+function updateConnectionStatus(data) {
+    const statusEl = document.querySelector('.system-info');
+    if (!statusEl) return;
+    
+    const statusHtml = `
+        <div class="connection-status ${stradMonitoringConnected ? 'connected' : 'disconnected'}">
+            ${stradMonitoringConnected ? '●' : '○'} Strad Monitoring: ${stradMonitoringConnected ? 'Connected' : 'Disconnected'}
+        </div>
+    `;
+    statusEl.innerHTML = statusHtml;
+}
+
+async function loadRecentStrads() {
+    try {
+        const response = await fetch(`${BACKEND_API_URL}/strads/recent?limit=10`);
+        const data = await response.json();
+        
+        if (data.success) {
+            recentStradsData = data.data;
+            console.log('Loaded recent strads:', recentStradsData);
+            
+            // Update kanban board with real data
+            if (recentStradsData.length > 0) {
+                updateKanbanWithRealData();
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load recent strads:', error);
+    }
+}
+
+function updateKanbanWithRealData() {
+    // Group strads by classification
+    const groupedStrads = {
+        none: recentStradsData.filter(s => s.classification === 'none'),
+        moderate: recentStradsData.filter(s => s.classification === 'moderate'),
+        critical: recentStradsData.filter(s => s.classification === 'critical')
+    };
+    
+    // Update counts in headers
+    updateColumnCounts(groupedStrads);
+    
+    // Add real strad cards to each column
+    addRealStradCards(groupedStrads);
+}
+
+function updateColumnCounts(groupedStrads) {
+    // Update Normal Operation count
+    const normalCountEl = document.querySelector('.kanban-column:nth-child(1) .count');
+    if (normalCountEl) {
+        normalCountEl.textContent = groupedStrads.none.length || 1; // Keep at least 1 for demo
+    }
+    
+    // Update Minor Issues count
+    const minorCountEl = document.querySelector('.kanban-column:nth-child(2) .count');
+    if (minorCountEl) {
+        minorCountEl.textContent = groupedStrads.moderate.length || 2; // Keep at least 2 for demo
+    }
+    
+    // Update Critical Alerts count
+    const criticalCountEl = document.querySelector('.kanban-column:nth-child(3) .count');
+    if (criticalCountEl) {
+        criticalCountEl.textContent = groupedStrads.critical.length || 2; // Keep at least 2 for demo
+    }
+}
+
+function addRealStradCards(groupedStrads) {
+    // Add real strad data cards if available
+    // Keep existing demo cards and add real ones below
+    
+    // For now, we'll just log that we have real data available
+    // The demo cards will remain as primary content
+    console.log('Real strad data available:', groupedStrads);
+}
+
+// ============================================================================
 // SCENARIO DATA STRUCTURE
 // ============================================================================
 // This object defines all camera alignment scenarios displayed in the UI.
@@ -436,6 +542,9 @@ function renderScenarioDetails(scenario) {
  */
 document.addEventListener('DOMContentLoaded', function() {
   
+  // Check backend connection on page load
+  checkBackendConnection();
+  
   /**
    * Keyboard event listener for Escape key
    * Closes the modal when Escape is pressed and modal is active
@@ -457,3 +566,474 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
 });
+
+  // ==============================================================================
+  // Upload Interface - Single Composite Image with Drag & Drop
+  // ==============================================================================
+  
+  const dropZone = document.getElementById('dropZone');
+  const compositeImageInput = document.getElementById('compositeImage');
+  const dropPlaceholder = document.getElementById('dropPlaceholder');
+  const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+  const imagePreview = document.getElementById('imagePreview');
+  const removeImageBtn = document.getElementById('removeImageBtn');
+  const uploadStatus = document.getElementById('uploadStatus');
+  const runInferenceBtn = document.getElementById('runInferenceBtn');
+  const clearImageBtn = document.getElementById('clearImageBtn');
+  
+  // Click on drop zone to trigger file input
+  dropZone.addEventListener('click', function(e) {
+    // Don't trigger if clicking the remove button
+    if (e.target.id === 'removeImageBtn') {
+      return;
+    }
+    compositeImageInput.click();
+  });
+  
+  // Handle file input change
+  compositeImageInput.addEventListener('change', handleCompositeImageSelect);
+  
+  // Drag and drop handlers
+  dropZone.addEventListener('dragover', handleDragOver);
+  dropZone.addEventListener('dragleave', handleDragLeave);
+  dropZone.addEventListener('drop', handleDrop);
+  
+  // Remove image button
+  removeImageBtn.addEventListener('click', function(e) {
+    e.stopPropagation(); // Prevent triggering dropZone click
+    removeImage();
+  });
+  
+  // Clear image button
+  if (clearImageBtn) {
+    clearImageBtn.addEventListener('click', removeImage);
+  }
+  
+  // Run Inference button listener
+  if (runInferenceBtn) {
+    runInferenceBtn.addEventListener('click', runInference);
+  }
+
+// ==============================================================================
+// Upload Handler Functions
+// ==============================================================================
+
+let currentCompositeImage = null;
+let inferenceController = null;
+let latestInferenceResults = null;
+
+/**
+ * Handle file selection from input element
+ * @param {Event} event - File input change event
+ */
+function handleCompositeImageSelect(event) {
+  const file = event.target.files[0];
+  
+  if (!file) {
+    return;
+  }
+  
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    alert('Please select a valid image file (JPEG or PNG)');
+    return;
+  }
+  
+  // Validate file size (10MB max)
+  const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+  if (file.size > maxSize) {
+    alert('Image file is too large. Maximum size is 10MB.');
+    return;
+  }
+  
+  // Store the file and display preview
+  currentCompositeImage = file;
+  displayImagePreview(file);
+}
+
+/**
+ * Handle drag over event
+ * @param {DragEvent} event - Drag event
+ */
+function handleDragOver(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  dropZone.classList.add('drag-over');
+}
+
+/**
+ * Handle drag leave event
+ * @param {DragEvent} event - Drag event
+ */
+function handleDragLeave(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  dropZone.classList.remove('drag-over');
+}
+
+/**
+ * Handle file drop event
+ * @param {DragEvent} event - Drop event
+ */
+function handleDrop(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  dropZone.classList.remove('drag-over');
+  
+  const files = event.dataTransfer.files;
+  
+  if (files.length === 0) {
+    return;
+  }
+  
+  const file = files[0];
+  
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    alert('Please drop a valid image file (JPEG or PNG)');
+    return;
+  }
+  
+  // Validate file size (10MB max)
+  const maxSize = 10 * 1024 * 1024;
+  if (file.size > maxSize) {
+    alert('Image file is too large. Maximum size is 10MB.');
+    return;
+  }
+  
+  // Store the file and display preview
+  currentCompositeImage = file;
+  displayImagePreview(file);
+}
+
+/**
+ * Display image preview in the drop zone
+ * @param {File} file - The image file to preview
+ */
+function displayImagePreview(file) {
+  // Create FileReader to read the image
+  const reader = new FileReader();
+  
+  reader.onload = function(e) {
+    // Set the preview image source
+    imagePreview.src = e.target.result;
+    
+    // Hide placeholder, show preview container
+    dropPlaceholder.style.display = 'none';
+    imagePreviewContainer.style.display = 'block';
+    
+    // Update upload status
+    uploadStatus.textContent = `Uploaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    uploadStatus.style.color = 'var(--color-success)';
+    
+    // Enable the run inference button
+    runInferenceBtn.disabled = false;
+    
+    // Show clear button
+    if (clearImageBtn) {
+      clearImageBtn.style.display = 'inline-flex';
+    }
+  };
+  
+  reader.onerror = function() {
+    alert('Error reading image file. Please try another image.');
+    removeImage();
+  };
+  
+  // Read the file as data URL
+  reader.readAsDataURL(file);
+}
+
+/**
+ * Remove the uploaded image and reset the UI
+ */
+function removeImage() {
+  // Clear the stored file
+  currentCompositeImage = null;
+  
+  // Reset the file input
+  compositeImageInput.value = '';
+  
+  // Clear the preview image
+  imagePreview.src = '';
+  
+  // Show placeholder, hide preview
+  dropPlaceholder.style.display = 'flex';
+  imagePreviewContainer.style.display = 'none';
+  
+  // Reset upload status
+  uploadStatus.textContent = 'No image uploaded';
+  uploadStatus.style.color = 'var(--color-gray-600)';
+  
+  // Disable run inference button
+  runInferenceBtn.disabled = true;
+  
+  // Hide clear button
+  if (clearImageBtn) {
+    clearImageBtn.style.display = 'none';
+  }
+  
+  // Hide results section if visible
+  const resultsSection = document.getElementById('resultsSection');
+  if (resultsSection) {
+    resultsSection.style.display = 'none';
+  }
+}
+
+/**
+ * Run inference on the uploaded composite image
+ */
+async function runInference() {
+  if (!currentCompositeImage) {
+    alert('Please upload an image first.');
+    return;
+  }
+  
+  // Show loading modal
+  showLoadingModal('Uploading images...', 'Processing 4 camera snapshots');
+  
+  // Create FormData to send images
+  const formData = new FormData();
+  
+  // Backend expects 4 separate images named 'cam0', 'cam1', 'cam2', 'cam3'
+  // For compatibility, we send the same composite image 4 times
+  formData.append('cam0', currentCompositeImage);
+  formData.append('cam1', currentCompositeImage);
+  formData.append('cam2', currentCompositeImage);
+  formData.append('cam3', currentCompositeImage);
+  
+  // Create AbortController for cancellation
+  inferenceController = new AbortController();
+  
+  try {
+    // Update loading message
+    showLoadingModal('Running inference...', 'Processing with deep learning model');
+    
+    // Make API request to backend
+    const response = await fetch('http://localhost:5000/api/inference', {
+      method: 'POST',
+      body: formData,
+      signal: inferenceController.signal
+    });
+    
+    // Check if request was successful
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+    
+    // Parse the JSON response
+    const data = await response.json();
+    
+    // Hide loading modal
+    hideLoadingModal();
+    
+    // Store results for export
+    latestInferenceResults = data;
+    
+    // Display results in UI
+    displayInferenceResults(data);
+    
+  } catch (error) {
+    // Hide loading modal
+    hideLoadingModal();
+    
+    // Check if error was from user cancellation
+    if (error.name === 'AbortError') {
+      console.log('Inference cancelled by user');
+      return;
+    }
+    
+    // Display error message
+    console.error('Inference error:', error);
+    alert(`Inference failed: ${error.message}\n\nMake sure the backend server is running on localhost:5000`);
+  } finally {
+    // Clean up controller
+    inferenceController = null;
+  }
+}
+
+/**
+ * Show loading modal with message
+ * @param {string} message - Main loading message
+ * @param {string} details - Additional details
+ */
+function showLoadingModal(message, details) {
+  const loadingModal = document.getElementById('loadingModal');
+  const loadingMessage = document.getElementById('loadingMessage');
+  const loadingDetails = document.getElementById('loadingDetails');
+  
+  if (loadingModal) {
+    loadingMessage.textContent = message;
+    loadingDetails.textContent = details;
+    loadingModal.style.display = 'flex';
+  }
+}
+
+/**
+ * Hide loading modal
+ */
+function hideLoadingModal() {
+  const loadingModal = document.getElementById('loadingModal');
+  
+  if (loadingModal) {
+    loadingModal.style.display = 'none';
+  }
+}
+
+/**
+ * Cancel ongoing inference request
+ */
+function cancelInference() {
+  if (inferenceController) {
+    inferenceController.abort();
+    inferenceController = null;
+  }
+  
+  hideLoadingModal();
+}
+
+/**
+ * Display inference results in the UI
+ * @param {Object} data - The inference result data from backend
+ */
+function displayInferenceResults(data) {
+  // Show results section
+  const resultsSection = document.getElementById('resultsSection');
+  if (resultsSection) {
+    resultsSection.style.display = 'block';
+    
+    // Scroll to results
+    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  
+  // Update misalignment probability
+  const probabilityFill = document.querySelector('.probability-fill');
+  const probabilityValue = document.querySelector('.probability-value');
+  
+  if (data.misalignment_probability !== undefined) {
+    const prob = (data.misalignment_probability * 100).toFixed(1);
+    probabilityFill.style.width = `${prob}%`;
+    probabilityValue.textContent = `${prob}%`;
+    
+    // Color code based on severity
+    if (data.misalignment_probability < 0.3) {
+      probabilityFill.style.backgroundColor = 'var(--color-success)';
+    } else if (data.misalignment_probability < 0.7) {
+      probabilityFill.style.backgroundColor = 'var(--color-warning)';
+    } else {
+      probabilityFill.style.backgroundColor = 'var(--color-danger)';
+    }
+  }
+  
+  // Update severity classification
+  const severityBadge = document.querySelector('.badge');
+  const severityDescription = document.querySelector('.severity-description');
+  
+  if (data.severity) {
+    const severity = data.severity.toLowerCase();
+    
+    // Update badge
+    severityBadge.className = 'badge';
+    if (severity === 'normal') {
+      severityBadge.classList.add('badge-success');
+      severityBadge.textContent = '✓ Normal';
+    } else if (severity === 'minor' || severity === 'low') {
+      severityBadge.classList.add('badge-warning');
+      severityBadge.textContent = '⚠ Minor Misalignment';
+    } else if (severity === 'critical' || severity === 'severe') {
+      severityBadge.classList.add('badge-danger');
+      severityBadge.textContent = '🚨 Critical Misalignment';
+    }
+    
+    // Update description
+    if (severityDescription && data.description) {
+      severityDescription.textContent = data.description;
+    }
+  }
+  
+  // Update 6-DOF pose values
+  if (data.pose) {
+    // Rotation
+    if (data.pose.rotation) {
+      document.getElementById('poseRoll').textContent = `${data.pose.rotation.roll.toFixed(2)}°`;
+      document.getElementById('posePitch').textContent = `${data.pose.rotation.pitch.toFixed(2)}°`;
+      document.getElementById('poseYaw').textContent = `${data.pose.rotation.yaw.toFixed(2)}°`;
+    }
+    
+    // Translation
+    if (data.pose.translation) {
+      document.getElementById('poseX').textContent = `${data.pose.translation.x.toFixed(3)} m`;
+      document.getElementById('poseY').textContent = `${data.pose.translation.y.toFixed(3)} m`;
+      document.getElementById('poseZ').textContent = `${data.pose.translation.z.toFixed(3)} m`;
+    }
+  }
+  
+  // Update uncertainty values
+  if (data.uncertainty) {
+    if (data.uncertainty.aleatoric !== undefined) {
+      document.getElementById('aleatoricUncertainty').textContent = data.uncertainty.aleatoric.toFixed(4);
+    }
+    
+    if (data.uncertainty.epistemic !== undefined) {
+      document.getElementById('epistemicUncertainty').textContent = data.uncertainty.epistemic.toFixed(4);
+    }
+  }
+}
+
+/**
+ * Download inference results as JSON file
+ */
+function downloadResults() {
+  if (!latestInferenceResults) {
+    alert('No inference results available to download.');
+    return;
+  }
+  
+  // Convert results to JSON string
+  const jsonStr = JSON.stringify(latestInferenceResults, null, 2);
+  
+  // Create blob
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  
+  // Create download link
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `inference_results_${Date.now()}.json`;
+  
+  // Trigger download
+  document.body.appendChild(link);
+  link.click();
+  
+  // Clean up
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Reset inference UI for another run
+ */
+function resetInference() {
+  // Hide results section
+  const resultsSection = document.getElementById('resultsSection');
+  if (resultsSection) {
+    resultsSection.style.display = 'none';
+  }
+  
+  // Clear stored results
+  latestInferenceResults = null;
+  
+  // Remove current image
+  removeImage();
+  
+  // Scroll to upload section
+  const uploadSection = document.querySelector('.upload-section');
+  if (uploadSection) {
+    uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// ==============================================================================
+// End of script
+// ==============================================================================

@@ -264,6 +264,143 @@
                 </button>
             </div>
         </section>
+
+        <!-- Image Upload Section -->
+        <section class="upload-section">
+            <div class="container">
+                <h2>🔬 Test Live Inference</h2>
+                <p class="upload-description">
+                    Upload a composite image with all 4 camera viewpoints (JPEG or PNG). Drag & drop or click to browse.
+                </p>
+                
+                <div id="dropZone" class="drop-zone">
+                    <input type="file" id="compositeImage" accept="image/jpeg,image/png" style="display: none;" />
+                    <div id="dropPlaceholder" class="drop-placeholder">
+                        <svg class="upload-icon-large" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <h3 class="drop-title">Drop Composite Image Here</h3>
+                        <p class="drop-hint">or <span class="drop-link">click to browse</span></p>
+                        <p class="drop-info">Supports JPEG and PNG • Max 10MB</p>
+                        <p class="drop-info-small">Image should contain all 4 camera viewpoints</p>
+                    </div>
+                    <div id="imagePreviewContainer" class="image-preview-container" style="display: none;">
+                        <img id="imagePreview" class="image-preview" alt="Composite image preview" />
+                        <button id="removeImageBtn" class="remove-image-btn" title="Remove image">×</button>
+                    </div>
+                </div>
+                
+                <div class="upload-status">
+                    <span id="uploadStatus">No image uploaded</span>
+                </div>
+                
+                <div class="upload-actions">
+                    <button id="runInferenceBtn" class="btn btn-primary btn-large" disabled>
+                        🚀 Run Inference
+                    </button>
+                    <button id="clearImageBtn" class="btn btn-secondary" style="display: none;">
+                        🗑️ Clear Image
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section (Hidden Initially) -->
+        <section id="resultsSection" class="results-section" style="display: none;">
+            <div class="container">
+                <h2>📊 Inference Results</h2>
+                
+                <!-- Summary Section -->
+                <div class="results-summary">
+                    <div class="result-card">
+                        <h3>Misalignment Probability</h3>
+                        <div class="probability-bar">
+                            <div class="probability-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="probability-value">0%</div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <h3>Severity Classification</h3>
+                        <span class="badge badge-success">Normal</span>
+                        <p class="severity-description">
+                            Inference result will be displayed here.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- 6-DOF Pose Section -->
+                <div class="pose-section">
+                    <h3>6-DOF Camera Pose</h3>
+                    <div class="pose-grid">
+                        <div class="pose-group">
+                            <h4>Rotation</h4>
+                            <table class="pose-table">
+                                <tr>
+                                    <td>Roll:</td>
+                                    <td id="poseRoll">0.0°</td>
+                                </tr>
+                                <tr>
+                                    <td>Pitch:</td>
+                                    <td id="posePitch">0.0°</td>
+                                </tr>
+                                <tr>
+                                    <td>Yaw:</td>
+                                    <td id="poseYaw">0.0°</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <div class="pose-group">
+                            <h4>Translation</h4>
+                            <table class="pose-table">
+                                <tr>
+                                    <td>X:</td>
+                                    <td id="poseX">0.00 m</td>
+                                </tr>
+                                <tr>
+                                    <td>Y:</td>
+                                    <td id="poseY">0.00 m</td>
+                                </tr>
+                                <tr>
+                                    <td>Z:</td>
+                                    <td id="poseZ">0.00 m</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Uncertainty Section -->
+                <div class="uncertainty-section">
+                    <h3>Uncertainty Estimates</h3>
+                    <div class="uncertainty-grid">
+                        <div class="uncertainty-card">
+                            <span class="uncertainty-label">Aleatoric Uncertainty:</span>
+                            <span class="uncertainty-value" id="aleatoricUncertainty">0.00</span>
+                            <span class="uncertainty-info" title="Data-dependent uncertainty (noise in observations)">ℹ️</span>
+                        </div>
+                        <div class="uncertainty-card">
+                            <span class="uncertainty-label">Epistemic Uncertainty:</span>
+                            <span class="uncertainty-value" id="epistemicUncertainty">0.00</span>
+                            <span class="uncertainty-info" title="Model-dependent uncertainty (lack of training data)">ℹ️</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="results-actions">
+                    <button class="btn btn-primary" onclick="downloadResults()">
+                        💾 Download Results (JSON)
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetInference()">
+                        🔄 Run Another Inference
+                    </button>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- Modal for Video Display -->
@@ -281,6 +418,18 @@
                     <!-- Scenario details will be injected here -->
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal for Inference -->
+    <div id="loadingModal" class="loading-modal" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h3 id="loadingMessage">Uploading images...</h3>
+            <p id="loadingDetails">Processing 4 camera snapshots</p>
+            <button class="btn btn-secondary" onclick="cancelInference()">
+                Cancel
+            </button>
         </div>
     </div>
 

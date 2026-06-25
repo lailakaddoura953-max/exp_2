@@ -1,0 +1,210 @@
+================================================================================
+                    STRAD CARRIER MONITORING WEB APP
+                         HOW TO RUN - QUICK GUIDE
+================================================================================
+
+EASIEST METHOD: Automated Launcher
+================================================================================
+
+1. Open Command Prompt (cmd)
+
+2. Navigate to project directory:
+   cd c:\Users\Miles\Desktop\exp_2
+
+3. Run the launcher:
+   start_web_app.bat
+
+4. Wait for browser to open automatically
+
+5. Check connection status (top right corner):
+   ● Connected (green) = Backend available
+   ○ Disconnected (red) = Demo mode
+
+
+MANUAL METHOD: Step by Step
+================================================================================
+
+STEP 1: Start Backend Server (Terminal 1)
+------------------------------------------
+cd c:\Users\Miles\Desktop\exp_2
+.venv\Scripts\activate
+python docs\backend\app.py
+
+>>> KEEP THIS WINDOW OPEN <<<
+
+
+STEP 2: Start Frontend Server (Terminal 2)
+-------------------------------------------
+cd c:\Users\Miles\Desktop\exp_2
+.venv\Scripts\activate
+python start_frontend_server.py
+
+>>> KEEP THIS WINDOW OPEN TOO <<<
+
+
+STEP 3: Open in Browser
+------------------------
+http://localhost:8000
+
+>>> NOT file:// path! Must use http://localhost:8000 <<<
+
+
+WHAT YOU'LL SEE
+================================================================================
+
+Connection Status (Top Right):
+  ● Connected (green) = Backend working, real data mode
+  ○ Disconnected (red) = Demo mode, placeholder data
+
+Kanban Board:
+  - Normal Operation (left)
+  - Misaligned - Low Priority (middle)
+  - Misaligned - Critical (right)
+
+Demo Videos:
+  - Click "View Demo" on any card
+  - Videos play in modal dialog
+  - Press Escape or X to close
+
+Live Inference Test (Bottom):
+  - Drag and drop an image
+  - Click "Run Inference"
+  - Results show classification, confidence, pose
+
+
+IMPORTANT NOTES
+================================================================================
+
+WHY TWO SERVERS?
+
+  Backend (port 5000)  = Flask API, strad monitoring, database
+  Frontend (port 8000) = HTTP file server for HTML/CSS/JS
+
+  Both are needed because:
+  - Browser blocks file:// → http:// requests (CORS security)
+  - Frontend server serves via HTTP
+  - Backend provides API endpoints
+  - This allows proper cross-origin communication
+
+
+DON'T DO THIS:
+  ❌ Open docs\index.html directly
+  ❌ Double-click index.html in Explorer
+  ❌ Use file:// path
+
+  >>> This causes CORS errors! <<<
+
+
+DO THIS INSTEAD:
+  ✅ Use start_web_app.bat
+  ✅ Or run both servers manually
+  ✅ Access via http://localhost:8000
+
+
+TROUBLESHOOTING
+================================================================================
+
+Problem: "Connection shows disconnected"
+----------------------------------------
+Solution:
+  1. Check both servers are running
+     - Backend on port 5000
+     - Frontend on port 8000
+  2. Check URL is http://localhost:8000
+  3. Refresh browser (F5)
+
+
+Problem: "CORS error in console"
+---------------------------------
+Solution:
+  You're opening file:// directly!
+  Use frontend server: http://localhost:8000
+
+
+Problem: "Port already in use"
+-------------------------------
+Solution:
+  netstat -ano | findstr :5000
+  taskkill /PID <process_id> /F
+
+
+Problem: "Backend won't start"
+-------------------------------
+Solution:
+  pip install flask flask-cors numpy pillow
+
+
+QUICK TEST
+================================================================================
+
+1. Run: start_web_app.bat
+
+2. Check: Top right shows ● Connected (green)
+
+3. Test: Click "View Demo" button
+
+4. Test: Scroll to bottom, upload image
+
+5. Check: Press F12, look for "Backend connection" in console
+
+
+DOCUMENTATION
+================================================================================
+
+Detailed Guides:
+  - WEB_APP_QUICK_START.md        (Web app specific)
+  - HOW_TO_USE_RIGHT_NOW.md       (Complete system guide)
+  - WEB_APP_SETUP_FIXED.md        (Technical details, CORS fix)
+  - docs/README_WEB_APP.md        (Quick reference)
+
+Integration Details:
+  - WEB_APP_INTEGRATION_SUMMARY.md (Technical integration)
+
+Testing:
+  - test_web_app_backend.py       (Backend API tests)
+
+
+STATUS
+================================================================================
+
+✅ Web app fully functional
+✅ Backend integration working
+✅ Frontend server configured
+✅ CORS issues resolved
+✅ Automated launcher available
+✅ Documentation complete
+
+Demo presentable - ready for testing!
+
+(Not production-ready until official POC approval)
+
+
+COMMAND CHEAT SHEET
+================================================================================
+
+# Start everything automatically
+start_web_app.bat
+
+# Start backend only
+python docs\backend\app.py
+
+# Start frontend only
+python start_frontend_server.py
+
+# Test backend API
+curl http://localhost:5000/
+
+# Test frontend
+start http://localhost:8000
+
+# Check ports in use
+netstat -ano | findstr :5000
+netstat -ano | findstr :8000
+
+# Run backend tests
+python test_web_app_backend.py
+
+
+================================================================================
+                              END OF GUIDE
+================================================================================

@@ -1,1 +1,1 @@
-"""Test suite for Camera Misalignment Detection System"""
+"""Test suite for Strad Monitoring System."""

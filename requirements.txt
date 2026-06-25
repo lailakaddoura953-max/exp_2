@@ -1,5 +1,6 @@
 # ==============================================================================
 # Core Runtime Dependencies for Deep Learning Misalignment Detection System
+# AND Strad Carrier Monitoring Automation
 # ==============================================================================
 # 
 # This file contains the minimum packages required to run the system in production.
@@ -11,6 +12,8 @@
 # - Training: NVIDIA GPU with 8GB+ VRAM (CUDA 6.1+) or AMD GPU with ROCm
 # - Inference: NVIDIA GPU with 4GB+ VRAM or NVIDIA Jetson (Xavier, Orin)
 # - System RAM: 16GB for training, 8GB for inference
+# - Platform: Windows 10/11 (required for Excel COM automation and VLC capture)
+# - GPU: CUDA 11.7+ (required for DL inference)
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -117,6 +120,113 @@ seaborn>=0.12.0
 # - CSV file handling
 # - DataFrame operations
 pandas>=2.0.0
+
+# ==============================================================================
+# Strad Carrier Monitoring Automation Dependencies
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Database Connectivity
+# ------------------------------------------------------------------------------
+# pyodbc for SQL Server connectivity:
+# - Production database interface
+# - Parameterized queries for security
+# - Connection pooling support
+# Requires: ODBC Driver 17 for SQL Server (installed separately)
+pyodbc>=5.0.0
+
+# Alternative: pymssql (pure Python SQL Server driver)
+# - No ODBC driver required
+# - Useful for environments where ODBC installation is restricted
+# Uncomment if using pymssql instead of pyodbc:
+# pymssql>=2.2.0
+
+# ------------------------------------------------------------------------------
+# Windows COM Automation (Windows-only)
+# ------------------------------------------------------------------------------
+# pywin32 provides Windows-specific functionality:
+# - Excel COM automation (win32com.client)
+# - Window management (win32gui)
+# - Windows API access
+# Note: Only available on Windows platform
+pywin32>=306; sys_platform == 'win32'
+
+# ------------------------------------------------------------------------------
+# GUI Automation and Screen Capture
+# ------------------------------------------------------------------------------
+# PyAutoGUI for screenshot capture:
+# - VLC window snapshot capture
+# - Screen region capture
+# - Cross-platform support
+pyautogui>=0.9.54
+
+# ------------------------------------------------------------------------------
+# Task Scheduling
+# ------------------------------------------------------------------------------
+# APScheduler for hourly cycle scheduling:
+# - Cron-like scheduling syntax
+# - Blocking and background schedulers
+# - Job persistence and recovery
+apscheduler>=3.10.0
+
+# ------------------------------------------------------------------------------
+# Property-Based Testing (Development/Testing)
+# ------------------------------------------------------------------------------
+# Hypothesis for property-based tests:
+# - Automated test case generation
+# - Property verification across input space
+# - Counterexample discovery
+hypothesis>=6.90.0
+
+# ------------------------------------------------------------------------------
+# Testing Framework (Development/Testing)
+# ------------------------------------------------------------------------------
+# pytest for test execution:
+# - Unit tests
+# - Integration tests
+# - Property-based tests
+pytest>=7.4.0
+
+# pytest-cov for code coverage:
+# - Coverage reports
+# - HTML coverage visualization
+# - Coverage threshold enforcement
+pytest-cov>=4.1.0
+
+# ------------------------------------------------------------------------------
+# Additional Notes for Strad Monitoring System
+# ------------------------------------------------------------------------------
+#
+# SQL Server Connectivity:
+# Requires ODBC Driver 17 for SQL Server to be installed separately.
+# Download from: https://docs.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server
+#
+# Verify ODBC driver installation:
+#   python -c "import pyodbc; print(pyodbc.drivers())"
+#
+# Excel COM Automation:
+# Requires Microsoft Excel to be installed on the system.
+# The system uses COM automation to control Excel spreadsheets.
+#
+# VLC Media Player:
+# Requires VLC Media Player to be installed for video feed capture.
+# Download from: https://www.videolan.org/vlc/
+#
+# Platform Requirements:
+# - Windows 10 or Windows 11 (required for Excel COM and VLC capture)
+# - Python 3.10 or 3.11 (compatibility with PyTorch 2.0+)
+# - CUDA 11.7+ (for deep learning inference)
+#
+# Optional: SQLite Fallback
+# The system includes SQLite fallback support for local testing when
+# SQL Server is unavailable. No additional installation required - 
+# SQLite is included with Python standard library.
+#
+# Memory Considerations:
+# - PyTorch packages: ~3-5GB disk space
+# - DL model checkpoints: 100MB-2GB per model
+# - Snapshot storage: Plan for 100GB+ for 30-day retention
+# - Database: Varies based on monitoring history retention
 
 # ------------------------------------------------------------------------------
 # Additional Notes
