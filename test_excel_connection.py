@@ -41,10 +41,11 @@ def test_excel_path():
     print_header("TEST 1: EXCEL FILE PATH")
     
     # Load configuration
-    config_path = "system_config.json"
+    config_path = "demo_config/system_config.json"
     
     if not Path(config_path).exists():
         print_error(f"Configuration file not found: {config_path}")
+        print_info("The configuration should be in demo_config/system_config.json")
         return False
     
     try:
@@ -54,11 +55,19 @@ def test_excel_path():
         print_error(f"Failed to load configuration: {e}")
         return False
     
-    if 'excel_file_path' not in config:
-        print_error("excel_file_path not found in config")
+    # Check for excel configuration section
+    if 'excel' not in config:
+        print_error("'excel' section not found in config")
+        print_info("You need to add an 'excel' section to the config file")
+        print_info("See: EXCEL_CONFIGURATION_GUIDE.md for instructions")
         return False
     
-    excel_path = config['excel_file_path']
+    if 'file_path' not in config['excel']:
+        print_error("'file_path' not found in excel section")
+        print_info("Add 'file_path' to the 'excel' section")
+        return False
+    
+    excel_path = config['excel']['file_path']
     
     print_info(f"Configured path: {excel_path}")
     

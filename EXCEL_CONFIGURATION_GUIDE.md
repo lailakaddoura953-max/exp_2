@@ -74,25 +74,46 @@ The Excel file might be stored on:
 
 ---
 
-## Configuring system_config.json
+## Configuring demo_config/system_config.json
 
 ### File Location
 
 ```
-c:\Users\Miles\Desktop\exp_2\system_config.json
+demo_config\system_config.json
 ```
 
-### Configuration Field
+### Configuration Section
 
-The Excel file path is specified in the `excel_file_path` field.
+**IMPORTANT:** You need to ADD the Excel configuration to the existing file. The file currently only has camera and processing settings.
+
+### Add Excel Configuration
+
+**You need to ADD this section** to the existing configuration:
+
+```json
+{
+  "excel": {
+    "file_path": "C:\\Path\\To\\Your\\File.xlsx",
+    "sheet_name": "VideoFeeds"
+  },
+  "database": {
+    "connection_string": "...",
+    "stored_procedure": "..."
+  },
+  "cameras": {
+    "0": { ... }
+  }
+}
+```
 
 ### Path Format Requirements
 
 **Important:** Use double backslashes (`\\`) in JSON!
 
 ```json
-{
-  "excel_file_path": "C:\\Path\\To\\Your\\File.xlsx"
+"excel": {
+  "file_path": "C:\\Path\\To\\Your\\File.xlsx",
+  "sheet_name": "VideoFeeds"
 }
 ```
 
@@ -108,8 +129,9 @@ The Excel file path is specified in the `excel_file_path` field.
 #### Example 1: File on C: Drive
 
 ```json
-{
-  "excel_file_path": "C:\\VideoEncoder\\spreader_encoder.xlsx"
+"excel": {
+  "file_path": "C:\\VideoEncoder\\spreader_encoder.xlsx",
+  "sheet_name": "VideoFeeds"
 }
 ```
 
@@ -123,8 +145,9 @@ The Excel file path is specified in the `excel_file_path` field.
 #### Example 2: File on Desktop
 
 ```json
-{
-  "excel_file_path": "C:\\Users\\Miles\\Desktop\\spreader_encoder.xlsx"
+"excel": {
+  "file_path": "C:\\Users\\Miles\\Desktop\\spreader_encoder.xlsx",
+  "sheet_name": "VideoFeeds"
 }
 ```
 
@@ -135,8 +158,9 @@ The Excel file path is specified in the `excel_file_path` field.
 #### Example 3: File in Documents
 
 ```json
-{
-  "excel_file_path": "C:\\Users\\Miles\\Documents\\VideoEncoder\\spreader_encoder.xlsx"
+"excel": {
+  "file_path": "C:\\Users\\Miles\\Documents\\VideoEncoder\\spreader_encoder.xlsx",
+  "sheet_name": "VideoFeeds"
 }
 ```
 
@@ -145,9 +169,11 @@ The Excel file path is specified in the `excel_file_path` field.
 #### Example 4: Network Drive (UNC Path)
 
 ```json
-{
-  "excel_file_path": "\\\\NetworkServer\\SharedFolder\\VideoEncoder\\spreader_encoder.xlsx"
+"excel": {
+  "file_path": "\\\\NetworkServer\\SharedFolder\\VideoEncoder\\spreader_encoder.xlsx",
+  "sheet_name": "VideoFeeds"
 }
+```
 ```
 
 **UNC path format:**
@@ -162,8 +188,9 @@ The Excel file path is specified in the `excel_file_path` field.
 #### Example 5: Mapped Network Drive
 
 ```json
-{
-  "excel_file_path": "Z:\\VideoEncoder\\spreader_encoder.xlsx"
+"excel": {
+  "file_path": "Z:\\VideoEncoder\\spreader_encoder.xlsx",
+  "sheet_name": "VideoFeeds"
 }
 ```
 
@@ -171,57 +198,48 @@ The Excel file path is specified in the `excel_file_path` field.
 
 ---
 
-### Full system_config.json Example
+### Complete Configuration File Example
+
+Here's what your complete `demo_config\system_config.json` should look like:
 
 ```json
 {
-  "_comment_header": "===== STRAD CARRIER MONITORING AUTOMATION - SYSTEM CONFIGURATION =====",
-  "_comment_instructions": "Update paths and connection strings for your environment before running",
-  
-  "_comment_database": "===== DATABASE CONFIGURATION =====",
-  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=StradMonitoring;Trusted_Connection=yes",
-  
-  "_comment_paths": "===== FILE PATHS =====",
-  "_excel_instructions": "STEP 2: Update this path to your Excel video encoder file",
-  "_excel_example_1": "Local file: C:\\\\VideoEncoder\\\\spreader_encoder.xlsx",
-  "_excel_example_2": "Desktop: C:\\\\Users\\\\YourUsername\\\\Desktop\\\\spreader_encoder.xlsx",
-  "_excel_example_3": "Network: \\\\\\\\Server\\\\Share\\\\VideoEncoder\\\\spreader_encoder.xlsx",
-  "excel_file_path": "C:\\VideoEncoder\\spreader_encoder.xlsx",
-  
-  "_model_instructions": "STEP 3: Update this path to your DL model checkpoint",
-  "model_checkpoint_path": "C:\\Models\\misalignment_detector_v2.pth",
-  
-  "_temp_snapshots_instructions": "STEP 4: Update temporary snapshot storage path",
-  "temp_snapshot_path": "C:\\StradMonitoring\\temp_snapshots",
-  
-  "_permanent_snapshots_instructions": "STEP 5: Update permanent snapshot storage path (critical only)",
-  "permanent_snapshot_path": "D:\\StradMonitoring\\critical_snapshots",
-  
-  "_log_instructions": "STEP 6: Update log file storage path",
-  "log_file_path": "C:\\StradMonitoring\\logs",
-  
-  "_comment_timing": "===== TIMING CONFIGURATION =====",
-  "cycle_schedule_cron": "0 * * * *",
-  "strad_selection_count": 10,
-  "cooldown_hours": 1,
-  "classification_timeout_seconds": 10,
-  
-  "_comment_snapshot": "===== SNAPSHOT CONFIGURATION =====",
-  "snapshot_min_width": 640,
-  "snapshot_min_height": 480,
-  "snapshot_retention_days": 30,
-  "log_retention_days": 14,
-  
-  "_comment_fallback": "===== LOCAL TESTING FALLBACK CONFIGURATION =====",
-  "enable_local_testing_mode": true,
-  "use_sqlite_fallback": true,
-  "sqlite_db_path": "tests/test.db",
-  "fallback_data_source": "sqlite",
-  "fallback_data_path": "C:\\test_data\\strad_list.csv",
-  
-  "_comment_dl_model": "===== DEEP LEARNING MODEL CONFIGURATION =====",
-  "dl_model_config": {
-    "flow_network": "liteflownet2",
+  "database": {
+    "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=StradMonitoring;Trusted_Connection=yes",
+    "stored_procedure": "strad_action_check_by_id_and_timestamp"
+  },
+  "excel": {
+    "file_path": "C:\\VideoEncoder\\spreader_encoder.xlsx",
+    "sheet_name": "VideoFeeds"
+  },
+  "cameras": {
+    "0": {
+      "stream_url": "rtsp://camera0.local/stream",
+      "resolution": [640, 480],
+      "fps": 30,
+      "thresholds": {
+        "position_threshold_m": 0.05,
+        "angle_threshold_deg": 5.0,
+        "flow_inconsistency_threshold": 0.3,
+        "confidence_threshold": 0.7
+      }
+    }
+  },
+  "alert_channels": [
+    {
+      "type": "dashboard",
+      "enabled": true,
+      "config": {}
+    }
+  ],
+  "processing_params": {
+    "frame_sync_tolerance_ms": 50.0,
+    "frame_buffer_size": 100,
+    "min_feature_count": 100,
+    "target_processing_rate_hz": 10.0,
+    "sustained_detection_frames": 2
+  }
+}
     "target_resolution": [640, 640],
     "confidence_threshold": 0.5,
     "enable_uncertainty": false

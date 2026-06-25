@@ -118,13 +118,85 @@ ORDER BY name
 
 ### File to Edit
 
-**Location:** `c:\Users\Miles\Desktop\exp_2\system_config.json`
+**Location:** `demo_config\system_config.json`
 
-### Current Configuration (Default)
+**IMPORTANT:** You need to ADD the database configuration to the existing file. The file currently only has camera and processing settings.
+
+### Current Configuration (Before Your Changes)
+
+The file currently looks like this (cameras and processing params only):
 
 ```json
 {
-  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=prod-server;DATABASE=StradMonitoring;Trusted_Connection=yes"
+  "cameras": {
+    "0": { ... },
+    "1": { ... }
+  },
+  "alert_channels": [ ... ],
+  "processing_params": { ... }
+}
+```
+
+### Add Database Configuration
+
+**You need to ADD this section** to the existing configuration:
+
+```json
+{
+  "database": {
+    "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=prod-server;DATABASE=StradMonitoring;Trusted_Connection=yes",
+    "stored_procedure": "strad_action_check_by_id_and_timestamp"
+  },
+  "cameras": {
+    "0": { ... },
+    "1": { ... }
+  },
+  "alert_channels": [ ... ],
+  "processing_params": { ... }
+}
+```
+
+### Complete Configuration File Example
+
+Here's what your complete `demo_config\system_config.json` should look like after adding database configuration:
+
+```json
+{
+  "database": {
+    "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=YOUR_SERVER_NAME;DATABASE=YOUR_DATABASE_NAME;Trusted_Connection=yes",
+    "stored_procedure": "strad_action_check_by_id_and_timestamp"
+  },
+  "excel": {
+    "file_path": "C:\\Users\\YourName\\Documents\\video_feeds.xlsx",
+    "sheet_name": "VideoFeeds"
+  },
+  "cameras": {
+    "0": {
+      "stream_url": "rtsp://camera0.local/stream",
+      "resolution": [640, 480],
+      "fps": 30,
+      "thresholds": {
+        "position_threshold_m": 0.05,
+        "angle_threshold_deg": 5.0,
+        "flow_inconsistency_threshold": 0.3,
+        "confidence_threshold": 0.7
+      }
+    }
+  },
+  "alert_channels": [
+    {
+      "type": "dashboard",
+      "enabled": true,
+      "config": {}
+    }
+  ],
+  "processing_params": {
+    "frame_sync_tolerance_ms": 50.0,
+    "frame_buffer_size": 100,
+    "min_feature_count": 100,
+    "target_processing_rate_hz": 10.0,
+    "sustained_detection_frames": 2
+  }
 }
 ```
 
@@ -133,8 +205,9 @@ ORDER BY name
 #### Option 1: Windows Authentication (Recommended)
 
 ```json
-{
-  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=YOUR_SERVER_NAME;DATABASE=YOUR_DATABASE_NAME;Trusted_Connection=yes"
+"database": {
+  "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=YOUR_SERVER_NAME;DATABASE=YOUR_DATABASE_NAME;Trusted_Connection=yes",
+  "stored_procedure": "strad_action_check_by_id_and_timestamp"
 }
 ```
 
@@ -146,37 +219,42 @@ ORDER BY name
 
 **Local SQL Server Express:**
 ```json
-{
-  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost\\SQLEXPRESS;DATABASE=StradMonitoring;Trusted_Connection=yes"
+"database": {
+  "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost\\SQLEXPRESS;DATABASE=StradMonitoring;Trusted_Connection=yes",
+  "stored_procedure": "strad_action_check_by_id_and_timestamp"
 }
 ```
 
 **Local SQL Server (default instance):**
 ```json
-{
-  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=StradMonitoring;Trusted_Connection=yes"
+"database": {
+  "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=StradMonitoring;Trusted_Connection=yes",
+  "stored_procedure": "strad_action_check_by_id_and_timestamp"
 }
 ```
 
 **Remote SQL Server:**
 ```json
-{
-  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=prod-server.company.com;DATABASE=StradMonitoring;Trusted_Connection=yes"
+"database": {
+  "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=prod-server.company.com;DATABASE=StradMonitoring;Trusted_Connection=yes",
+  "stored_procedure": "strad_action_check_by_id_and_timestamp"
 }
 ```
 
 **Remote SQL Server with Port:**
 ```json
-{
-  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=prod-server.company.com,1433;DATABASE=StradMonitoring;Trusted_Connection=yes"
+"database": {
+  "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=prod-server.company.com,1433;DATABASE=StradMonitoring;Trusted_Connection=yes",
+  "stored_procedure": "strad_action_check_by_id_and_timestamp"
 }
 ```
 
 #### Option 2: SQL Server Authentication
 
 ```json
-{
-  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=YOUR_SERVER_NAME;DATABASE=YOUR_DATABASE_NAME;UID=YOUR_USERNAME;PWD=YOUR_PASSWORD"
+"database": {
+  "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=YOUR_SERVER_NAME;DATABASE=YOUR_DATABASE_NAME;UID=YOUR_USERNAME;PWD=YOUR_PASSWORD",
+  "stored_procedure": "strad_action_check_by_id_and_timestamp"
 }
 ```
 
@@ -190,15 +268,17 @@ ORDER BY name
 
 **Local SQL Server with SQL Authentication:**
 ```json
-{
-  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=StradMonitoring;UID=strad_user;PWD=SecurePassword123!"
+"database": {
+  "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=StradMonitoring;UID=strad_user;PWD=SecurePassword123!",
+  "stored_procedure": "strad_action_check_by_id_and_timestamp"
 }
 ```
 
 **Remote SQL Server with SQL Authentication:**
 ```json
-{
-  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=prod-server.company.com;DATABASE=StradMonitoring;UID=strad_user;PWD=SecurePassword123!"
+"database": {
+  "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=prod-server.company.com;DATABASE=StradMonitoring;UID=strad_user;PWD=SecurePassword123!",
+  "stored_procedure": "strad_action_check_by_id_and_timestamp"
 }
 ```
 
@@ -206,8 +286,9 @@ ORDER BY name
 
 **ODBC Driver 18:**
 ```json
-{
-  "database_connection_string": "DRIVER={ODBC Driver 18 for SQL Server};SERVER=YOUR_SERVER_NAME;DATABASE=YOUR_DATABASE_NAME;Trusted_Connection=yes;TrustServerCertificate=yes"
+"database": {
+  "connection_string": "DRIVER={ODBC Driver 18 for SQL Server};SERVER=YOUR_SERVER_NAME;DATABASE=YOUR_DATABASE_NAME;Trusted_Connection=yes;TrustServerCertificate=yes",
+  "stored_procedure": "strad_action_check_by_id_and_timestamp"
 }
 ```
 
@@ -215,8 +296,9 @@ ORDER BY name
 
 **SQL Server Native Client:**
 ```json
-{
-  "database_connection_string": "DRIVER={SQL Server Native Client 11.0};SERVER=YOUR_SERVER_NAME;DATABASE=YOUR_DATABASE_NAME;Trusted_Connection=yes"
+"database": {
+  "connection_string": "DRIVER={SQL Server Native Client 11.0};SERVER=YOUR_SERVER_NAME;DATABASE=YOUR_DATABASE_NAME;Trusted_Connection=yes",
+  "stored_procedure": "strad_action_check_by_id_and_timestamp"
 }
 ```
 
@@ -493,19 +575,26 @@ GO
 
 ### Method 1: Using Python Test Script
 
-Create this test script: `test_database_connection.py`
+The test script `test_database_connection.py` reads from `demo_config/system_config.json`:
 
 ```python
 """Test SQL Server connection"""
 import pyodbc
 import sys
-
-# Load connection string from system_config.json
 import json
-with open('system_config.json', 'r') as f:
+
+# Load connection string from demo_config/system_config.json
+with open('demo_config/system_config.json', 'r') as f:
     config = json.load(f)
 
-connection_string = config['database_connection_string']
+# Get database configuration
+if 'database' not in config:
+    print("ERROR: No 'database' section in system_config.json")
+    print("You need to add the database configuration section.")
+    print("See SQL_SERVER_SETUP_GUIDE.md for instructions.")
+    sys.exit(1)
+
+connection_string = config['database']['connection_string']
 
 print("=" * 70)
 print("SQL SERVER CONNECTION TEST")
@@ -700,7 +789,7 @@ Before running the system, verify:
 - [ ] Stored procedure exists (strad_action_check_by_id_and_timestamp)
 - [ ] User has permissions (SELECT, INSERT, UPDATE, DELETE, EXECUTE)
 - [ ] ODBC driver installed
-- [ ] Connection string updated in system_config.json
+- [ ] Connection string updated in demo_config/system_config.json
 - [ ] Connection test passes
 
 ---

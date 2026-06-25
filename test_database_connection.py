@@ -39,11 +39,11 @@ def main():
     print_header("SQL SERVER CONNECTION TEST")
     
     # Load configuration
-    config_path = "system_config.json"
+    config_path = "demo_config/system_config.json"
     
     if not Path(config_path).exists():
         print_error(f"Configuration file not found: {config_path}")
-        print_info("Create system_config.json with database_connection_string")
+        print_info("The configuration should be in demo_config/system_config.json")
         return 1
     
     try:
@@ -53,11 +53,19 @@ def main():
         print_error(f"Failed to load configuration: {e}")
         return 1
     
-    if 'database_connection_string' not in config:
-        print_error("database_connection_string not found in config")
+    # Check for database configuration section
+    if 'database' not in config:
+        print_error("'database' section not found in config")
+        print_info("You need to add a 'database' section to the config file")
+        print_info("See: SQL_SERVER_SETUP_GUIDE.md for instructions")
         return 1
     
-    connection_string = config['database_connection_string']
+    if 'connection_string' not in config['database']:
+        print_error("'connection_string' not found in database section")
+        print_info("Add 'connection_string' to the 'database' section")
+        return 1
+    
+    connection_string = config['database']['connection_string']
     
     print_info(f"Connection string: {connection_string}")
     print()
