@@ -195,7 +195,7 @@ class MonitoringOrchestrator:
             self.logger.error(f"  ✗ VLCCapture initialization failed: {e}")
             raise
         
-        # 4. Initialize DLClassifierWrapper
+        # 4. Initialize DLClassifierWrapper (skip in testing mode if model not available)
         try:
             self.logger.info("  Initializing DLClassifierWrapper...")
             self.dl_classifier = DLClassifierWrapper(
@@ -205,8 +205,12 @@ class MonitoringOrchestrator:
             )
             self.logger.info("  ✓ DLClassifierWrapper initialized")
         except Exception as e:
-            self.logger.error(f"  ✗ DLClassifierWrapper initialization failed: {e}")
-            raise
+            if self.config.enable_local_testing_mode:
+                self.logger.warning(f"  ⚠ DLClassifierWrapper initialization failed (testing mode - using fallback): {e}")
+                self.dl_classifier = None  # Will use fallback classification
+            else:
+                self.logger.error(f"  ✗ DLClassifierWrapper initialization failed: {e}")
+                raise
         
         # 5. Initialize StorageManager
         try:
@@ -836,7 +840,25 @@ class MonitoringOrchestrator:
             self.logger.info(f"  [4/6] Classifying snapshot...")
             
             try:
-                classification_result = self.dl_classifier.classify_snapshot(snapshot)
+                # Use fallback classification if DL model not available (testing mode)
+                if self.dl_classifier is None:
+                    self.logger.warning(f"  ⚠ DL model not available - using random fallback classification")
+                    import random
+                    from ..dl_classifier.classifier_wrapper import ClassificationResult
+                    
+                    # Generate random classification for testing
+                    severity = random.choice(['none', 'moderate', 'critical'])
+                    confidence = random.uniform(0.5, 0.95)
+                    
+                    classification_result = ClassificationResult(
+                        severity=severity,
+                        confidence=confidence,
+                        processing_time_ms=10.0,
+                        model_name='fallback_random',
+                        threshold_used=0.5
+                    )
+                else:
+                    classification_result = self.dl_classifier.classify_snapshot(snapshot)
                 
                 self.logger.info(
                     f"  ✓ Classification: {classification_result.severity} "
