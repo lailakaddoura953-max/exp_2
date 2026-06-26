@@ -65,7 +65,9 @@ class VLCCapture:
         self,
         stabilization_delay: float = 5.0,
         min_width: int = 640,
-        min_height: int = 480
+        min_height: int = 480,
+        rtsp_username: Optional[str] = None,
+        rtsp_password: Optional[str] = None
     ):
         """
         Initialize VLC capture settings.
@@ -75,6 +77,8 @@ class VLCCapture:
                                 before capturing. Must be positive.
             min_width: Minimum required snapshot width in pixels.
             min_height: Minimum required snapshot height in pixels.
+            rtsp_username: Optional RTSP authentication username for VLC dialog
+            rtsp_password: Optional RTSP authentication password for VLC dialog
             
         Raises:
             ValueError: If any parameter is negative or zero.
@@ -89,6 +93,8 @@ class VLCCapture:
         self.stabilization_delay = stabilization_delay
         self.min_width = min_width
         self.min_height = min_height
+        self.rtsp_username = rtsp_username
+        self.rtsp_password = rtsp_password
         
         # Warn if Windows dependencies are not available
         if not WINDOWS_AVAILABLE:
@@ -148,6 +154,65 @@ class VLCCapture:
                 return None
         
         return hwnd if hwnd != 0 else None
+    
+    def _handle_vlc_authentication(self) -> None:
+        """
+        Automatically fill VLC RTSP authentication dialog if it appears.
+        
+        This method detects if a VLC authentication dialog is present and
+        automatically fills in the username and password from configuration.
+        Uses PyAutoGUI to type credentials and press Enter.
+        
+        Note: Only works if rtsp_username and rtsp_password were provided.
+        """
+        if not self.rtsp_username or not self.rtsp_password:
+            logger.debug("No RTSP credentials configured, skipping auth handling")
+            return
+        
+        if not PYAUTOGUI_AVAILABLE or pyautogui is None:
+            logger.warning("pyautogui not available, cannot handle VLC authentication")
+            return
+        
+        try:
+            # Wait briefly for auth dialog to appear
+            time.sleep(1.0)
+            
+            # Look for VLC authentication dialog window
+            def find_auth_dialog(hwnd, results):
+                if win32gui.IsWindowVisible(hwnd):
+                    window_text = win32gui.GetWindowText(hwnd).lower()
+                    if any(keyword in window_text for keyword in ['authentication', 'login', 'password', 'user']):
+                        results.append(hwnd)
+            
+            auth_dialogs = []
+            if WINDOWS_AVAILABLE and win32gui:
+                win32gui.EnumWindows(find_auth_dialog, auth_dialogs)
+            
+            if auth_dialogs:
+                logger.info("VLC authentication dialog detected, auto-filling credentials")
+                
+                # Bring auth dialog to foreground
+                auth_hwnd = auth_dialogs[0]
+                win32gui.SetForegroundWindow(auth_hwnd)
+                time.sleep(0.3)
+                
+                # Type username, press Tab, type password, press Enter
+                pyautogui.write(self.rtsp_username, interval=0.05)
+                time.sleep(0.2)
+                pyautogui.press('tab')
+                time.sleep(0.2)
+                pyautogui.write(self.rtsp_password, interval=0.05)
+                time.sleep(0.2)
+                pyautogui.press('enter')
+                
+                logger.info("✓ VLC authentication credentials submitted")
+                time.sleep(1.0)  # Wait for dialog to close
+            else:
+                logger.debug("No VLC authentication dialog detected")
+                
+        except Exception as e:
+            logger.warning(f"Failed to handle VLC authentication: {e}")
+            # Don't raise - authentication might not be needed or user can do it manually
     
     def _bring_to_foreground(self, hwnd: int) -> None:
         """
@@ -332,6 +397,11 @@ class VLCCapture:
         
         # ===== Requirement 3.1: Wait for feed stabilization =====
         logger.debug(f"Waiting {self.stabilization_delay}s for feed stabilization...")
+        
+        # ===== Handle VLC RTSP authentication if needed =====
+        self._handle_vlc_authentication()
+        
+        # Continue waiting for stabilization after auth
         time.sleep(self.stabilization_delay)
         
         # ===== Requirement 3.6: Implement retry logic (3 attempts with 2-second intervals) =====

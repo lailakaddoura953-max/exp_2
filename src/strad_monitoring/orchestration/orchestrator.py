@@ -186,7 +186,9 @@ class MonitoringOrchestrator:
             self.vlc_capture = VLCCapture(
                 stabilization_delay=5.0,  # 5 seconds for feed stabilization
                 min_width=self.config.snapshot_min_width,
-                min_height=self.config.snapshot_min_height
+                min_height=self.config.snapshot_min_height,
+                rtsp_username=getattr(self.config, 'rtsp_username', None),
+                rtsp_password=getattr(self.config, 'rtsp_password', None)
             )
             self.logger.info("  ✓ VLCCapture initialized")
         except Exception as e:

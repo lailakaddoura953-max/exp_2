@@ -29,6 +29,10 @@ class SystemConfig:
     database_connection_string: str
     strad_query_sql_file: str = "strad_query.sql"  # SQL query file for strad selection
     
+    # RTSP authentication for VLC
+    rtsp_username: Optional[str] = None
+    rtsp_password: Optional[str] = None
+    
     # File paths
     excel_file_path: str
     model_checkpoint_path: str
