@@ -13,6 +13,7 @@ import sys
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
+import torch
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -58,10 +59,14 @@ if STRAD_MONITORING_AVAILABLE:
             
             # Initialize DL classifier
             try:
+                # Auto-detect device
+                device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                print(f"Using device: {device}")
+                
                 dl_classifier = DLClassifierWrapper(
                     model_checkpoint_path=config.model_checkpoint_path,
                     config=config.dl_model_config,
-                    device='cuda'
+                    device=device
                 )
                 print("✓ DL classifier initialized")
             except Exception as e:

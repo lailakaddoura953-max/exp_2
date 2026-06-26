@@ -24,6 +24,7 @@ import time
 from datetime import datetime
 from typing import Dict, Optional
 
+import torch
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -198,10 +199,15 @@ class MonitoringOrchestrator:
         # 4. Initialize DLClassifierWrapper (skip in testing mode if model not available)
         try:
             self.logger.info("  Initializing DLClassifierWrapper...")
+            
+            # Auto-detect device (CUDA if available, otherwise CPU)
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            self.logger.info(f"  Using device: {device}")
+            
             self.dl_classifier = DLClassifierWrapper(
                 model_checkpoint_path=self.config.model_checkpoint_path,
                 config=self.config.dl_model_config,
-                device='cuda'  # Use GPU for inference
+                device=device
             )
             self.logger.info("  ✓ DLClassifierWrapper initialized")
         except Exception as e:
