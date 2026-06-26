@@ -47,20 +47,13 @@ class SystemConfig:
     snapshot_retention_days: int
     log_retention_days: int
     
-    # Database configuration (optional - with defaults)
+    # Optional fields with defaults (MUST come after all required fields)
     strad_query_sql_file: str = "strad_query.sql"  # SQL query file for strad selection
-    
-    # RTSP authentication for VLC (optional - with defaults)
     rtsp_username: Optional[str] = None
     rtsp_password: Optional[str] = None
-    
-    # LOCAL TESTING FALLBACK CONFIGURATION (optional - with defaults)
-    # See LOCAL_TESTING_GUIDE.md for details
     enable_local_testing_mode: bool = True
     fallback_data_path: Optional[str] = None
     fallback_data_source: str = "random"  # Options: "kitti", "local_folder", "random"
-    
-    # Deep learning model configuration (optional - with defaults)
     dl_model_config: Dict = field(default_factory=dict)
 
 
