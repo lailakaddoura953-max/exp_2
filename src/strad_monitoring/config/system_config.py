@@ -53,7 +53,9 @@ class SystemConfig:
     rtsp_password: Optional[str] = None
     enable_local_testing_mode: bool = True
     fallback_data_path: Optional[str] = None
-    fallback_data_source: str = "random"  # Options: "kitti", "local_folder", "random"
+    fallback_data_source: str = "random"  # Options: "kitti", "local_folder", "random", "sqlite"
+    use_sqlite_fallback: bool = False  # Legacy field for backward compatibility
+    sqlite_db_path: Optional[str] = None  # Legacy field for backward compatibility
     dl_model_config: Dict = field(default_factory=dict)
 
 
