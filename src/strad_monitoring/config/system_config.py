@@ -25,40 +25,42 @@ class SystemConfig:
     in this dataclass for type-safe access throughout the system.
     """
     
-    # Database configuration
+    # Database configuration (required)
     database_connection_string: str
-    strad_query_sql_file: str = "strad_query.sql"  # SQL query file for strad selection
     
-    # RTSP authentication for VLC
-    rtsp_username: Optional[str] = None
-    rtsp_password: Optional[str] = None
-    
-    # File paths
+    # File paths (required)
     excel_file_path: str
     model_checkpoint_path: str
     temp_snapshot_path: str
     permanent_snapshot_path: str
     log_file_path: str
     
-    # Timing configuration
+    # Timing configuration (required)
     cycle_schedule_cron: str
     strad_selection_count: int
     cooldown_hours: int
     classification_timeout_seconds: int
     
-    # Snapshot configuration
+    # Snapshot configuration (required)
     snapshot_min_width: int
     snapshot_min_height: int
     snapshot_retention_days: int
     log_retention_days: int
     
-    # LOCAL TESTING FALLBACK CONFIGURATION
+    # Database configuration (optional - with defaults)
+    strad_query_sql_file: str = "strad_query.sql"  # SQL query file for strad selection
+    
+    # RTSP authentication for VLC (optional - with defaults)
+    rtsp_username: Optional[str] = None
+    rtsp_password: Optional[str] = None
+    
+    # LOCAL TESTING FALLBACK CONFIGURATION (optional - with defaults)
     # See LOCAL_TESTING_GUIDE.md for details
     enable_local_testing_mode: bool = True
     fallback_data_path: Optional[str] = None
     fallback_data_source: str = "random"  # Options: "kitti", "local_folder", "random"
     
-    # Deep learning model configuration
+    # Deep learning model configuration (optional - with defaults)
     dl_model_config: Dict = field(default_factory=dict)
 
 
@@ -210,11 +212,15 @@ class ConfigurationManager:
                 errors.append(f"Required field '{field_name}' is missing or empty")
         
         # Validate database connection string format
+        # DSN-based connections (DSN=...) don't need DRIVER= or SERVER=
         if config.database_connection_string:
-            if 'DRIVER=' not in config.database_connection_string:
-                errors.append("database_connection_string must contain 'DRIVER=' clause")
-            if 'SERVER=' not in config.database_connection_string:
-                errors.append("database_connection_string must contain 'SERVER=' clause")
+            is_dsn_connection = 'DSN=' in config.database_connection_string.upper()
+            if not is_dsn_connection:
+                # For non-DSN connections, require DRIVER= and SERVER=
+                if 'DRIVER=' not in config.database_connection_string:
+                    errors.append("database_connection_string must contain 'DRIVER=' clause (or use DSN=...)")
+                if 'SERVER=' not in config.database_connection_string:
+                    errors.append("database_connection_string must contain 'SERVER=' clause (or use DSN=...)")
         
         # Validate file paths exist (skip if using environment variables that aren't set yet)
         paths_to_check = {
