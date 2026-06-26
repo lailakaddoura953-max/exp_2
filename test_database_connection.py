@@ -152,7 +152,7 @@ def main():
         # Test query
         print()
         print_info("Testing simple query...")
-        cursor.execute("SELECT GETDATE() AS current_time")
+        cursor.execute("SELECT GETDATE() AS server_time")
         row = cursor.fetchone()
         print_success(f"Query successful! Server time: {row[0]}")
         
