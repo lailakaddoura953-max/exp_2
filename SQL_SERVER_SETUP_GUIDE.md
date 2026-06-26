@@ -118,43 +118,28 @@ ORDER BY name
 
 ### File to Edit
 
-**Location:** `demo_config\system_config.json`
+**Location:** `system_config.json` (in the root directory of the project)
 
-**IMPORTANT:** You need to ADD the database configuration to the existing file. The file currently only has camera and processing settings.
+**IMPORTANT:** This file already exists with default values. You need to UPDATE the existing values with your actual database connection details.
 
-### Current Configuration (Before Your Changes)
+### Current Configuration Structure
 
-The file currently looks like this (cameras and processing params only):
-
-```json
-{
-  "cameras": {
-    "0": { ... },
-    "1": { ... }
-  },
-  "alert_channels": [ ... ],
-  "processing_params": { ... }
-}
-```
-
-### Add Database Configuration
-
-**You need to ADD this section** to the existing configuration:
+The file uses a flat structure with these database-related fields:
 
 ```json
 {
-  "database": {
-    "connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=prod-server;DATABASE=StradMonitoring;Trusted_Connection=yes",
-    "stored_procedure": "strad_action_check_by_id_and_timestamp"
-  },
-  "cameras": {
-    "0": { ... },
-    "1": { ... }
-  },
-  "alert_channels": [ ... ],
-  "processing_params": { ... }
+  "_comment_database": "===== DATABASE CONFIGURATION =====",
+  "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=prod-server;DATABASE=StradMonitoring;Trusted_Connection=yes",
+  
+  "_comment_paths": "===== FILE PATHS =====",
+  "excel_file_path": "C:\\VideoEncoder\\spreader_encoder.xlsx",
+  ...
 }
 ```
+
+### How to Update
+
+Open `system_config.json` and find the `"database_connection_string"` field (around line 5). Replace the default value with your actual SQL Server connection details.
 
 ### Complete Configuration File Example
 

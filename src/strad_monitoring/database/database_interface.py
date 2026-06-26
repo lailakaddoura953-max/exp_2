@@ -87,7 +87,8 @@ class DatabaseInterface:
         fallback_data_path: Optional[str] = None,
         fallback_data_source: str = "random",
         use_sqlite_fallback: bool = False,
-        sqlite_db_path: Optional[str] = None
+        sqlite_db_path: Optional[str] = None,
+        strad_query_sql_file: Optional[str] = None
     ):
         """
         Initialize database interface with fallback support.
@@ -99,6 +100,7 @@ class DatabaseInterface:
             fallback_data_source: Fallback method - "kitti", "local_folder", "sqlite", or "random"
             use_sqlite_fallback: Use SQLite database for local testing (NEW!)
             sqlite_db_path: Path to SQLite test database (default: "tests/test.db")
+            strad_query_sql_file: Path to SQL query file for strad selection (default: "strad_query.sql")
         """
         self.connection_string = connection_string
         self.enable_fallback = enable_fallback
@@ -106,6 +108,7 @@ class DatabaseInterface:
         self.fallback_data_source = fallback_data_source
         self.use_sqlite_fallback = use_sqlite_fallback
         self.sqlite_db_path = sqlite_db_path or "tests/test.db"
+        self.strad_query_sql_file = strad_query_sql_file or "strad_query.sql"
         
         self.connection = None
         self.sqlite_connection = None
@@ -247,7 +250,7 @@ class DatabaseInterface:
         """
         Query production SQL Server for eligible strads.
         
-        Calls the stored procedure 'strad_action_check_by_id_and_timestamp' which:
+        Reads and executes SQL query from file (configured in system_config.json) which:
         - Filters strads checked within last 1 hour (cooldown)
         - Excludes strads in critical_strad_exclusions table
         - Returns up to 'count' random strad IDs
@@ -262,11 +265,24 @@ class DatabaseInterface:
         cursor = conn.cursor()
         
         try:
-            # Call stored procedure with count parameter
-            cursor.execute("EXEC strad_action_check_by_id_and_timestamp @count=?", (count,))
+            # Read SQL query from file
+            if not os.path.exists(self.strad_query_sql_file):
+                raise DatabaseError(
+                    f"SQL query file not found: {self.strad_query_sql_file}",
+                    component="DatabaseInterface"
+                )
+            
+            with open(self.strad_query_sql_file, 'r') as f:
+                sql_query = f.read()
+            
+            # Replace @count parameter in SQL with actual value
+            sql_query = sql_query.replace('@count', str(count))
+            
+            # Execute the SQL query
+            cursor.execute(sql_query)
             results = cursor.fetchall()
             
-            # Extract strad IDs from results
+            # Extract strad IDs from results (CHE is first column)
             strad_ids = [row[0] for row in results]
             
             self.logger.info(f"Retrieved {len(strad_ids)} eligible strads from SQL Server: {strad_ids[:5]}...")
@@ -274,7 +290,7 @@ class DatabaseInterface:
             
         except Exception as e:
             raise DatabaseError(
-                "Failed to execute stored procedure",
+                "Failed to execute SQL query from file",
                 component="DatabaseInterface",
                 original_error=e
             )

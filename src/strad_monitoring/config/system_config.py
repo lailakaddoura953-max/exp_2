@@ -27,6 +27,7 @@ class SystemConfig:
     
     # Database configuration
     database_connection_string: str
+    strad_query_sql_file: str = "strad_query.sql"  # SQL query file for strad selection
     
     # File paths
     excel_file_path: str

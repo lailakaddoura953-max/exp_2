@@ -159,7 +159,8 @@ class MonitoringOrchestrator:
                 fallback_data_path=self.config.fallback_data_path,
                 fallback_data_source=self.config.fallback_data_source,
                 use_sqlite_fallback=getattr(self.config, 'use_sqlite_fallback', False),
-                sqlite_db_path=getattr(self.config, 'sqlite_db_path', 'tests/test.db')
+                sqlite_db_path=getattr(self.config, 'sqlite_db_path', 'tests/test.db'),
+                strad_query_sql_file=getattr(self.config, 'strad_query_sql_file', 'strad_query.sql')
             )
             self.logger.info("  ✓ DatabaseInterface initialized")
         except Exception as e:

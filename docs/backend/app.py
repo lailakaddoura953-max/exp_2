@@ -51,7 +51,8 @@ if STRAD_MONITORING_AVAILABLE:
                 fallback_data_path=config.fallback_data_path,
                 fallback_data_source=config.fallback_data_source,
                 use_sqlite_fallback=getattr(config, 'use_sqlite_fallback', False),
-                sqlite_db_path=getattr(config, 'sqlite_db_path', 'tests/test.db')
+                sqlite_db_path=getattr(config, 'sqlite_db_path', 'tests/test.db'),
+                strad_query_sql_file=getattr(config, 'strad_query_sql_file', 'strad_query.sql')
             )
             print("✓ Database interface initialized")
             
