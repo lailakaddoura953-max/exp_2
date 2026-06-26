@@ -171,14 +171,49 @@ python train_strad_classifier.py --epochs 200 --batch_size 32 --lr 0.0001
 4. **Advanced models**: Experiment with ResNet, EfficientNet backbones
 5. **Data augmentation**: Add more augmentations for robustness
 
+## Model Evaluation
+
+After training completes, evaluate your model with comprehensive visualizations:
+
+```bash
+python evaluate_model.py --model trained_models/strad_classifier_acc85.3_20260626_120000.pth --data_dir SCFootage
+```
+
+This generates:
+- **Confusion Matrix** - See where model makes mistakes
+- **Classification Metrics** - Precision, Recall, F1-score per class
+- **Class Distribution** - Ground truth vs predictions comparison
+- **ROC Curves** - Per-class performance visualization
+- **Confidence Distribution** - Correct vs incorrect prediction confidence
+- **Evaluation Summary** - JSON file with all metrics
+
+All visualizations saved to `evaluation_results/` folder.
+
+### Example Output
+
+```
+CLASSIFICATION REPORT
+============================================================
+              precision    recall  f1-score   support
+
+        None     0.8523    0.9200    0.8849        49
+    Moderate     0.7895    0.7308    0.7589        52
+    Critical     0.8261    0.7826    0.8037        46
+
+    accuracy                         0.8163       147
+```
+
 ## Files Created
 
 - `train_strad_classifier.py` - Main training script
+- `evaluate_model.py` - Model evaluation with visualizations
 - `src/dl_misalignment/data/strad_footage_dataset.py` - Dataset loader
 - `trained_models/` - Saved model checkpoints (created during training)
+- `evaluation_results/` - Evaluation visualizations (created during evaluation)
 
 ## Questions?
 
 Check the code comments in:
 - `train_strad_classifier.py` - Training loop and model definition
+- `evaluate_model.py` - Evaluation metrics and visualization
 - `strad_footage_dataset.py` - Data loading logic
