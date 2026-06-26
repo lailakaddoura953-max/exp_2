@@ -109,11 +109,16 @@ def evaluate_model(model, dataloader, device):
 
 def plot_confusion_matrix(y_true, y_pred, class_names, output_path):
     """Generate and save confusion matrix heatmap."""
-    cm = confusion_matrix(y_true, y_pred)
+    # Get unique classes present
+    unique_classes = np.unique(np.concatenate([y_true, y_pred]))
+    labels_present = sorted(unique_classes.tolist())
+    class_names_present = [class_names[i] for i in labels_present]
+    
+    cm = confusion_matrix(y_true, y_pred, labels=labels_present)
     
     plt.figure(figsize=(10, 8))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                xticklabels=class_names, yticklabels=class_names,
+                xticklabels=class_names_present, yticklabels=class_names_present,
                 cbar_kws={'label': 'Count'})
     plt.title('Confusion Matrix', fontsize=16, fontweight='bold')
     plt.ylabel('True Label', fontsize=12)
@@ -123,17 +128,26 @@ def plot_confusion_matrix(y_true, y_pred, class_names, output_path):
     plt.close()
     
     print(f"✓ Confusion matrix saved: {output_path}")
+    if len(labels_present) < 3:
+        print(f"  ⚠ Warning: Only {len(labels_present)} classes in validation set: {class_names_present}")
 
 
 def plot_classification_report(y_true, y_pred, class_names, output_path):
     """Generate and save classification metrics bar chart."""
     from sklearn.metrics import precision_recall_fscore_support
     
+    # Get unique classes present in the data
+    unique_classes = np.unique(np.concatenate([y_true, y_pred]))
+    labels_present = sorted(unique_classes.tolist())
+    
+    # Filter class names to only those present
+    class_names_present = [class_names[i] for i in labels_present]
+    
     precision, recall, f1, support = precision_recall_fscore_support(
-        y_true, y_pred, labels=[0, 1, 2]
+        y_true, y_pred, labels=labels_present, zero_division=0
     )
     
-    x = np.arange(len(class_names))
+    x = np.arange(len(class_names_present))
     width = 0.25
     
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -146,7 +160,7 @@ def plot_classification_report(y_true, y_pred, class_names, output_path):
     ax.set_ylabel('Score', fontsize=12)
     ax.set_title('Classification Metrics by Class', fontsize=16, fontweight='bold')
     ax.set_xticks(x)
-    ax.set_xticklabels(class_names)
+    ax.set_xticklabels(class_names_present)
     ax.legend()
     ax.set_ylim([0, 1.1])
     ax.grid(axis='y', alpha=0.3)
@@ -167,7 +181,10 @@ def plot_classification_report(y_true, y_pred, class_names, output_path):
     print("\n" + "="*60)
     print("CLASSIFICATION REPORT")
     print("="*60)
-    print(classification_report(y_true, y_pred, target_names=class_names, digits=4))
+    print(f"\nNote: Only {len(labels_present)} of 3 classes present in validation set")
+    print(f"Classes present: {class_names_present}")
+    print(classification_report(y_true, y_pred, labels=labels_present, 
+                                target_names=class_names_present, digits=4, zero_division=0))
 
 
 def plot_class_distribution(y_true, y_pred, class_names, output_path):
