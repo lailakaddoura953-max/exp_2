@@ -35,6 +35,34 @@ The training script automatically:
 - Extracts frames from MP4 videos
 - Handles class imbalance with weights
 
+## Data Augmentation (for Small Datasets)
+
+If you have limited data or class imbalance, generate synthetic data first:
+
+```bash
+python generate_synthetic_data.py --input SCFootage --output SCFootage_augmented --target_per_class 100
+```
+
+This will:
+- ✓ Balance all classes to 100 images each (300 total)
+- ✓ Apply realistic augmentations (rotation, flip, brightness, noise, blur)
+- ✓ Preserve original images alongside augmented copies
+- ✓ Extract frames from videos automatically
+
+Then train on the augmented dataset:
+```bash
+python train_strad_classifier.py --data_dir SCFootage_augmented --epochs 50
+```
+
+**Augmentation techniques used:**
+- Random rotation (±15°)
+- Horizontal flip
+- Brightness adjustment (70-130%)
+- Contrast adjustment (80-120%)
+- Gaussian noise
+- Random translation (±10%)
+- Gaussian blur
+
 ## Quick Start
 
 ### 1. Prepare Data
