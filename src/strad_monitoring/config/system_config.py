@@ -218,10 +218,14 @@ class ConfigurationManager:
                     errors.append("database_connection_string must contain 'SERVER=' clause (or use DSN=...)")
         
         # Validate file paths exist (skip if using environment variables that aren't set yet)
+        # In local testing mode, model checkpoint path is optional
         paths_to_check = {
             'excel_file_path': config.excel_file_path,
-            'model_checkpoint_path': config.model_checkpoint_path
         }
+        
+        # Only validate model checkpoint if not in local testing mode
+        if not config.enable_local_testing_mode:
+            paths_to_check['model_checkpoint_path'] = config.model_checkpoint_path
         
         for path_name, path_value in paths_to_check.items():
             if path_value and not path_value.startswith('${') and not os.path.exists(path_value):
@@ -237,6 +241,12 @@ class ConfigurationManager:
         for dir_name, dir_path in directories_to_check.items():
             if dir_path and not dir_path.startswith('${'):
                 parent_dir = os.path.dirname(dir_path) if os.path.splitext(dir_path)[1] else dir_path
+                # Check if drive exists before trying to create directory
+                if parent_dir:
+                    drive = os.path.splitdrive(parent_dir)[0]
+                    if drive and not os.path.exists(drive + '\\'):
+                        errors.append(f"Drive does not exist for {dir_name}: {drive}")
+                        continue
                 try:
                     os.makedirs(parent_dir, exist_ok=True)
                 except Exception as e:
@@ -268,11 +278,11 @@ class ConfigurationManager:
         
         # Validate fallback configuration
         if config.enable_local_testing_mode:
-            valid_sources = ['kitti', 'local_folder', 'random']
+            valid_sources = ['kitti', 'local_folder', 'random', 'sqlite']
             if config.fallback_data_source not in valid_sources:
                 errors.append(f"fallback_data_source must be one of {valid_sources}, got: {config.fallback_data_source}")
             
-            # If using local_folder or kitti, fallback_data_path should be set
+            # If using local_folder, kitti, or sqlite, fallback_data_path should be set
             if config.fallback_data_source in ['local_folder', 'kitti'] and not config.fallback_data_path:
                 errors.append(f"fallback_data_path must be set when fallback_data_source is '{config.fallback_data_source}'")
         
