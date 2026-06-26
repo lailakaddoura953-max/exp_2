@@ -203,6 +203,8 @@ def generate_synthetic_data(input_dir, output_dir, target_per_class=100):
     """
     Generate synthetic data by augmenting existing samples.
     
+    Maintains proper structure: class_folder/strad_id_folder/images
+    
     Args:
         input_dir: Source data directory
         output_dir: Output directory for augmented data
@@ -239,7 +241,7 @@ def generate_synthetic_data(input_dir, output_dir, target_per_class=100):
             print(f"  Class already has {current_count} samples (target: {target_per_class})")
             print(f"  Copying original files...")
             
-            # Just copy original files
+            # Copy original files maintaining structure
             for i, file_path in enumerate(tqdm(files, desc=f"  Copying {class_name}")):
                 # Load image/video
                 if file_path.suffix.lower() in ['.png', '.jpg', '.jpeg']:
@@ -247,8 +249,12 @@ def generate_synthetic_data(input_dir, output_dir, target_per_class=100):
                 else:
                     image = extract_video_frame(str(file_path))
                 
+                # Create strad ID folder
+                strad_id_folder = class_output_dirs[class_name] / f'STRAD_{i:04d}'
+                strad_id_folder.mkdir(exist_ok=True)
+                
                 # Save
-                output_path = class_output_dirs[class_name] / f'{class_name}_{i:04d}_original.png'
+                output_path = strad_id_folder / f'{class_name}_original.png'
                 cv2.imwrite(str(output_path), image)
             
             continue
@@ -260,7 +266,7 @@ def generate_synthetic_data(input_dir, output_dir, target_per_class=100):
         
         print(f"  Augmentations per image: {augmentations_per_image}")
         
-        sample_idx = 0
+        strad_counter = 0
         
         # Process each original file
         for file_path in tqdm(files, desc=f"  Generating {class_name}"):
@@ -270,38 +276,62 @@ def generate_synthetic_data(input_dir, output_dir, target_per_class=100):
             else:
                 original_image = extract_video_frame(str(file_path))
             
+            # Create strad ID folder for this source image and its augmentations
+            strad_id_folder = class_output_dirs[class_name] / f'STRAD_{strad_counter:04d}'
+            strad_id_folder.mkdir(exist_ok=True)
+            
             # Save original
-            output_path = class_output_dirs[class_name] / f'{class_name}_{sample_idx:04d}_original.png'
+            output_path = strad_id_folder / f'{class_name}_original.png'
             cv2.imwrite(str(output_path), original_image)
-            sample_idx += 1
             total_generated += 1
             
-            # Generate augmented copies
+            # Generate augmented copies in the same strad folder
             for aug_idx in range(augmentations_per_image):
-                if sample_idx >= target_per_class:
+                if total_generated >= target_per_class * len(dataset):
                     break
                 
                 # Apply random augmentations
                 augmented = augmenter.augment(original_image, 
                                              num_augmentations=random.randint(2, 4))
                 
-                # Save augmented
-                output_path = class_output_dirs[class_name] / f'{class_name}_{sample_idx:04d}_aug{aug_idx}.png'
+                # Save augmented in same strad folder
+                output_path = strad_id_folder / f'{class_name}_aug{aug_idx:02d}.png'
                 cv2.imwrite(str(output_path), augmented)
-                sample_idx += 1
                 total_generated += 1
+            
+            strad_counter += 1
+            
+            # Stop if we've reached target for this class
+            images_in_class = sum(len(list(folder.glob('*.png'))) 
+                                 for folder in class_output_dirs[class_name].iterdir() 
+                                 if folder.is_dir())
+            if images_in_class >= target_per_class:
+                break
         
-        print(f"  ✓ Generated {sample_idx} total samples for {class_name}")
+        final_count = sum(len(list(folder.glob('*.png'))) 
+                         for folder in class_output_dirs[class_name].iterdir() 
+                         if folder.is_dir())
+        print(f"  ✓ Generated {final_count} total samples for {class_name}")
     
     print(f"\n{'='*80}")
     print("GENERATION COMPLETE")
     print("="*80)
-    print(f"\nTotal images generated: {total_generated}")
-    print(f"Output directory: {output_dir}")
+    print(f"\nOutput directory: {output_dir}")
     print(f"\nFinal distribution:")
     for class_name in ['none', 'moderate', 'critical']:
-        count = len(list(class_output_dirs[class_name].glob('*.png')))
-        print(f"  {class_name}: {count} images")
+        count = sum(len(list(folder.glob('*.png'))) 
+                   for folder in class_output_dirs[class_name].iterdir() 
+                   if folder.is_dir())
+        strad_folders = len(list(class_output_dirs[class_name].iterdir()))
+        print(f"  {class_name}: {count} images in {strad_folders} strad folders")
+    
+    print(f"\nStructure maintained:")
+    print(f"  SCFootage_augmented/")
+    print(f"    misaligned - none/")
+    print(f"      STRAD_0001/")
+    print(f"        none_original.png")
+    print(f"        none_aug00.png")
+    print(f"        ...")
     
     print(f"\nYou can now train with:")
     print(f"  python train_strad_classifier.py --data_dir {output_dir} --epochs 50")
