@@ -790,17 +790,14 @@ async function runInference() {
   }
   
   // Show loading modal
-  showLoadingModal('Uploading images...', 'Processing 4 camera snapshots');
+  showLoadingModal('Uploading images...', 'Processing snapshot with SimpleClassifierWrapper');
   
   // Create FormData to send images
   const formData = new FormData();
   
-  // Backend expects 4 separate images named 'cam0', 'cam1', 'cam2', 'cam3'
-  // For compatibility, we send the same composite image 4 times
-  formData.append('cam0', currentCompositeImage);
-  formData.append('cam1', currentCompositeImage);
-  formData.append('cam2', currentCompositeImage);
-  formData.append('cam3', currentCompositeImage);
+  // Use single-image mode to trigger real classifier (not mock data)
+  // Backend will use SimpleClassifierWrapper when it receives 'image' field
+  formData.append('image', currentCompositeImage);
   
   // Create AbortController for cancellation
   inferenceController = new AbortController();
@@ -907,19 +904,37 @@ function displayInferenceResults(data) {
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   
+  // Handle both response formats:
+  // - Multi-camera format: {misalignment_probability, severity, pose, uncertainty}
+  // - Single-image format: {classification, confidence, processing_time_ms}
+  
   // Update misalignment probability
   const probabilityFill = document.querySelector('.probability-fill');
   const probabilityValue = document.querySelector('.probability-value');
   
-  if (data.misalignment_probability !== undefined) {
-    const prob = (data.misalignment_probability * 100).toFixed(1);
+  // Convert confidence to probability if single-image mode
+  let probability = data.misalignment_probability;
+  if (probability === undefined && data.confidence !== undefined) {
+    // Single-image mode: use confidence as probability
+    // Map classification to probability range
+    if (data.classification === 'none') {
+      probability = data.confidence * 0.2; // 0-20% for none
+    } else if (data.classification === 'moderate') {
+      probability = 0.2 + (data.confidence * 0.5); // 20-70% for moderate
+    } else if (data.classification === 'critical') {
+      probability = 0.7 + (data.confidence * 0.3); // 70-100% for critical
+    }
+  }
+  
+  if (probability !== undefined) {
+    const prob = (probability * 100).toFixed(1);
     probabilityFill.style.width = `${prob}%`;
     probabilityValue.textContent = `${prob}%`;
     
     // Color code based on severity
-    if (data.misalignment_probability < 0.3) {
+    if (probability < 0.3) {
       probabilityFill.style.backgroundColor = 'var(--color-success)';
-    } else if (data.misalignment_probability < 0.7) {
+    } else if (probability < 0.7) {
       probabilityFill.style.backgroundColor = 'var(--color-warning)';
     } else {
       probabilityFill.style.backgroundColor = 'var(--color-danger)';
@@ -930,25 +945,40 @@ function displayInferenceResults(data) {
   const severityBadge = document.querySelector('.badge');
   const severityDescription = document.querySelector('.severity-description');
   
-  if (data.severity) {
-    const severity = data.severity.toLowerCase();
+  // Get severity from either format
+  let severity = data.severity || data.classification;
+  
+  if (severity) {
+    severity = severity.toLowerCase();
     
     // Update badge
     severityBadge.className = 'badge';
-    if (severity === 'normal') {
+    if (severity === 'normal' || severity === 'none') {
       severityBadge.classList.add('badge-success');
       severityBadge.textContent = '✓ Normal';
-    } else if (severity === 'minor' || severity === 'low') {
+    } else if (severity === 'minor' || severity === 'low' || severity === 'moderate') {
       severityBadge.classList.add('badge-warning');
-      severityBadge.textContent = '⚠ Minor Misalignment';
+      severityBadge.textContent = '⚠ Moderate Misalignment';
     } else if (severity === 'critical' || severity === 'severe') {
       severityBadge.classList.add('badge-danger');
       severityBadge.textContent = '🚨 Critical Misalignment';
     }
     
     // Update description
-    if (severityDescription && data.description) {
-      severityDescription.textContent = data.description;
+    if (severityDescription) {
+      if (data.description) {
+        severityDescription.textContent = data.description;
+      } else if (data.classification && data.confidence) {
+        // Generate description for single-image mode
+        const conf = (data.confidence * 100).toFixed(1);
+        if (data.classification === 'none') {
+          severityDescription.textContent = `🟢 NO MISALIGNMENT (${conf}% confidence) - Camera properly aligned`;
+        } else if (data.classification === 'moderate') {
+          severityDescription.textContent = `🟡 MODERATE MISALIGNMENT (${conf}% confidence) - Continue monitoring`;
+        } else if (data.classification === 'critical') {
+          severityDescription.textContent = `🔴 CRITICAL MISALIGNMENT (${conf}% confidence) - Camera requires immediate adjustment`;
+        }
+      }
     }
   }
   
