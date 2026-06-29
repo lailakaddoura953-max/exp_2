@@ -196,26 +196,94 @@ class MonitoringOrchestrator:
             self.logger.error(f"  ✗ VLCCapture initialization failed: {e}")
             raise
         
-        # 4. Initialize DLClassifierWrapper (skip in testing mode if model not available)
+        # 4. Initialize classifier (DLClassifierWrapper or SimpleClassifierWrapper)
+        # The classifier type is controlled by the 'classifier_type' field in system_config.json:
+        # - 'simple_classifier': Uses SimpleClassifierWrapper for models trained with train_strad_classifier.py
+        # - 'inference_engine': Uses DLClassifierWrapper for InferenceEngine-based models (legacy)
         try:
-            self.logger.info("  Initializing DLClassifierWrapper...")
+            # Read classifier type from config with default to 'inference_engine'
+            classifier_type = getattr(self.config, 'classifier_type', 'inference_engine')
+            self.logger.info(f"  Initializing classifier: {classifier_type}...")
             
-            # Auto-detect device (CUDA if available, otherwise CPU)
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
-            self.logger.info(f"  Using device: {device}")
+            # Validate classifier_type is one of the allowed values
+            # This ensures only supported classifier types are used
+            valid_types = ['simple_classifier', 'inference_engine']
+            if classifier_type not in valid_types:
+                raise ValueError(
+                    f"Invalid classifier_type: '{classifier_type}'. "
+                    f"Must be one of {valid_types}"
+                )
             
-            self.dl_classifier = DLClassifierWrapper(
-                model_checkpoint_path=self.config.model_checkpoint_path,
-                config=self.config.dl_model_config,
-                device=device
-            )
-            self.logger.info("  ✓ DLClassifierWrapper initialized")
+            # Check if checkpoint file exists before attempting to load
+            # This prevents cryptic errors during model loading
+            from pathlib import Path
+            checkpoint_path = Path(self.config.model_checkpoint_path)
+            if not checkpoint_path.exists():
+                if self.config.enable_local_testing_mode:
+                    # Testing mode: Set classifier to None and log warning
+                    # This allows the system to run without a model for integration testing
+                    self.logger.warning(
+                        f"  ⚠ Model checkpoint not found: {self.config.model_checkpoint_path} "
+                        f"(testing mode - classifier set to None)"
+                    )
+                    self.dl_classifier = None
+                    # Skip to next component initialization
+                    self.logger.info("  Continuing without classifier in testing mode")
+                else:
+                    # Production mode: Raise FileNotFoundError
+                    # In production, a missing model is a critical error
+                    raise FileNotFoundError(
+                        f"Model checkpoint not found: {self.config.model_checkpoint_path}"
+                    )
+            else:
+                # Checkpoint exists, proceed with initialization
+                # Auto-detect device (CUDA if available, otherwise CPU)
+                # This enables GPU acceleration when available for faster inference
+                device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                self.logger.info(f"  Using device: {device}")
+                
+                if classifier_type == 'simple_classifier':
+                    # Import SimpleClassifierWrapper for models trained with train_strad_classifier.py
+                    # This is a lightweight wrapper that loads the model directly without InferenceEngine
+                    from ..dl_classifier.simple_classifier_wrapper import SimpleClassifierWrapper
+                    
+                    self.dl_classifier = SimpleClassifierWrapper(
+                        model_checkpoint_path=self.config.model_checkpoint_path,
+                        device=device,
+                        image_size=640
+                    )
+                    self.logger.info("  ✓ SimpleClassifierWrapper initialized")
+                
+                elif classifier_type == 'inference_engine':
+                    # Import DLClassifierWrapper for InferenceEngine-based models (legacy)
+                    # This uses the complex InferenceEngine architecture
+                    self.dl_classifier = DLClassifierWrapper(
+                        model_checkpoint_path=self.config.model_checkpoint_path,
+                        config=self.config.dl_model_config,
+                        device=device
+                    )
+                    self.logger.info("  ✓ DLClassifierWrapper initialized")
+        
+        except (ValueError, FileNotFoundError) as e:
+            # Re-raise validation and file not found errors in production mode
+            # ValueError: Invalid classifier_type value
+            # FileNotFoundError: Model checkpoint file not found
+            if not self.config.enable_local_testing_mode:
+                self.logger.error(f"  ✗ Classifier initialization failed: {e}")
+                raise
+            else:
+                # In testing mode, these were already handled above for FileNotFoundError
+                # For ValueError, still log and set to None to allow testing to proceed
+                self.logger.warning(f"  ⚠ Classifier initialization failed (testing mode): {e}")
+                self.dl_classifier = None
+        
         except Exception as e:
+            # Handle other unexpected errors (e.g., model loading failures, incompatible checkpoints)
             if self.config.enable_local_testing_mode:
-                self.logger.warning(f"  ⚠ DLClassifierWrapper initialization failed (testing mode - using fallback): {e}")
+                self.logger.warning(f"  ⚠ Classifier initialization failed (testing mode - using fallback): {e}")
                 self.dl_classifier = None  # Will use fallback classification
             else:
-                self.logger.error(f"  ✗ DLClassifierWrapper initialization failed: {e}")
+                self.logger.error(f"  ✗ Classifier initialization failed: {e}")
                 raise
         
         # 5. Initialize StorageManager

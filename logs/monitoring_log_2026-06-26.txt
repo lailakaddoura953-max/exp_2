@@ -1,0 +1,48 @@
+2026-06-26 16:51:40 [INFO] [LoggingSystem] Logging system initialized: C:\Users\Miles\Desktop\exp_2\logs\monitoring_log_2026-06-26.txt
+2026-06-26 16:51:40 [INFO] [LoggingSystem] Log level: INFO, Retention: 14 days
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator] Logging system initialized
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator] ================================================================================
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator] MONITORING ORCHESTRATOR INITIALIZATION
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator] ================================================================================
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator] Initializing components...
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator]   Initializing DatabaseInterface...
+2026-06-26 16:51:40 [WARNING] [DatabaseInterface] pyodbc not installed - database unavailable
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator]   ✓ DatabaseInterface initialized
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator]   Initializing ExcelAutomation...
+2026-06-26 16:51:40 [ERROR] [MonitoringOrchestrator]   ✗ ExcelAutomation initialization failed: win32com not available. Please install pywin32: pip install pywin32
+2026-06-26 16:51:40 [ERROR] [strad_monitoring.excel_automation.excel_automation] Error during COM cleanup: 'ExcelAutomation' object has no attribute 'workbook'
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator] Logging system initialized
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator] ================================================================================
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator] MONITORING ORCHESTRATOR INITIALIZATION
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator] ================================================================================
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator] Initializing components...
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator]   Initializing DatabaseInterface...
+2026-06-26 16:51:40 [WARNING] [DatabaseInterface] pyodbc not installed - database unavailable
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator]   ✓ DatabaseInterface initialized
+2026-06-26 16:51:40 [INFO] [MonitoringOrchestrator]   Initializing ExcelAutomation...
+2026-06-26 16:51:40 [ERROR] [MonitoringOrchestrator]   ✗ ExcelAutomation initialization failed: win32com not available. Please install pywin32: pip install pywin32
+2026-06-26 16:51:40 [ERROR] [strad_monitoring.excel_automation.excel_automation] Error during COM cleanup: 'ExcelAutomation' object has no attribute 'workbook'
+2026-06-26 17:03:06 [INFO] [LoggingSystem] Logging system initialized: C:\Users\Miles\Desktop\exp_2\logs\monitoring_log_2026-06-26.txt
+2026-06-26 17:03:06 [INFO] [LoggingSystem] Log level: INFO, Retention: 14 days
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator] Logging system initialized
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator] ================================================================================
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator] MONITORING ORCHESTRATOR INITIALIZATION
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator] ================================================================================
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator] Initializing components...
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator]   Initializing DatabaseInterface...
+2026-06-26 17:03:06 [WARNING] [DatabaseInterface] pyodbc not installed - database unavailable
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator]   ✓ DatabaseInterface initialized
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator]   Initializing ExcelAutomation...
+2026-06-26 17:03:06 [ERROR] [MonitoringOrchestrator]   ✗ ExcelAutomation initialization failed: win32com not available. Please install pywin32: pip install pywin32
+2026-06-26 17:03:06 [ERROR] [strad_monitoring.excel_automation.excel_automation] Error during COM cleanup: 'ExcelAutomation' object has no attribute 'workbook'
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator] Logging system initialized
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator] ================================================================================
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator] MONITORING ORCHESTRATOR INITIALIZATION
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator] ================================================================================
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator] Initializing components...
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator]   Initializing DatabaseInterface...
+2026-06-26 17:03:06 [WARNING] [DatabaseInterface] pyodbc not installed - database unavailable
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator]   ✓ DatabaseInterface initialized
+2026-06-26 17:03:06 [INFO] [MonitoringOrchestrator]   Initializing ExcelAutomation...
+2026-06-26 17:03:06 [ERROR] [MonitoringOrchestrator]   ✗ ExcelAutomation initialization failed: win32com not available. Please install pywin32: pip install pywin32
+2026-06-26 17:03:06 [ERROR] [strad_monitoring.excel_automation.excel_automation] Error during COM cleanup: 'ExcelAutomation' object has no attribute 'workbook'

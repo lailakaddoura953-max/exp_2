@@ -25,8 +25,8 @@ CORS(app)  # Enable CORS for frontend requests
 # Try to import strad_monitoring components
 try:
     from strad_monitoring.database.database_interface import DatabaseInterface
-    from strad_monitoring.dl_classifier.classifier_wrapper import DLClassifierWrapper
     from strad_monitoring.config.system_config import ConfigurationManager
+    # Note: Classifier wrappers are imported conditionally based on config
     STRAD_MONITORING_AVAILABLE = True
 except ImportError as e:
     print(f"⚠ Strad monitoring components not available: {e}")
@@ -57,20 +57,55 @@ if STRAD_MONITORING_AVAILABLE:
             )
             print("✓ Database interface initialized")
             
-            # Initialize DL classifier
+            # Initialize classifier based on configuration
+            # The classifier type determines which wrapper class is used:
+            # - 'simple_classifier': SimpleClassifierWrapper for models trained with train_strad_classifier.py
+            # - 'inference_engine': DLClassifierWrapper for InferenceEngine-based models
             try:
-                # Auto-detect device
-                device = 'cuda' if torch.cuda.is_available() else 'cpu'
-                print(f"Using device: {device}")
+                # Read classifier_type from config with default to 'inference_engine'
+                classifier_type = getattr(config, 'classifier_type', 'inference_engine')
                 
-                dl_classifier = DLClassifierWrapper(
-                    model_checkpoint_path=config.model_checkpoint_path,
-                    config=config.dl_model_config,
-                    device=device
-                )
-                print("✓ DL classifier initialized")
+                # Auto-detect device (CUDA for GPU acceleration if available, otherwise CPU)
+                device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                print(f"Using classifier: {classifier_type}, device: {device}")
+                
+                if classifier_type == 'simple_classifier':
+                    # Import and instantiate SimpleClassifierWrapper
+                    # This is for models trained with the simplified training script
+                    from strad_monitoring.dl_classifier.simple_classifier_wrapper import SimpleClassifierWrapper
+                    
+                    dl_classifier = SimpleClassifierWrapper(
+                        model_checkpoint_path=config.model_checkpoint_path,
+                        device=device,
+                        image_size=640
+                    )
+                    print("✓ SimpleClassifierWrapper initialized")
+                
+                elif classifier_type == 'inference_engine':
+                    # Import and instantiate DLClassifierWrapper
+                    # This is for legacy InferenceEngine-based models
+                    from strad_monitoring.dl_classifier.classifier_wrapper import DLClassifierWrapper
+                    
+                    dl_classifier = DLClassifierWrapper(
+                        model_checkpoint_path=config.model_checkpoint_path,
+                        config=config.dl_model_config,
+                        device=device
+                    )
+                    print("✓ DLClassifierWrapper initialized")
+                
+                else:
+                    # Invalid classifier_type value - raise error
+                    # This validates that only supported classifier types are used
+                    raise ValueError(
+                        f"Invalid classifier_type: '{classifier_type}'. "
+                        f"Must be 'simple_classifier' or 'inference_engine'"
+                    )
+                
             except Exception as e:
-                print(f"⚠ DL classifier not available: {e}")
+                # Handle classifier initialization failures gracefully
+                # In web app mode, we can fall back to mock classification
+                print(f"⚠ Classifier not available: {e}")
+                dl_classifier = None
         else:
             print(f"⚠ Config file not found: {config_path}")
     except Exception as e:
@@ -446,8 +481,11 @@ def get_severity_description(severity, confidence):
 @app.route('/api/model/status', methods=['GET'])
 def model_status():
     """Check if model is loaded and ready"""
+    classifier_type = getattr(config, 'classifier_type', 'inference_engine') if config else 'unknown'
+    
     return jsonify({
         'model_loaded': dl_classifier is not None,
+        'classifier_type': classifier_type,
         'model_type': 'strad_monitoring' if dl_classifier else 'mock',
         'ready': True,
         'database_connected': db_interface is not None,

@@ -56,6 +56,17 @@ class SystemConfig:
     fallback_data_source: str = "random"  # Options: "kitti", "local_folder", "random", "sqlite"
     use_sqlite_fallback: bool = False  # Legacy field for backward compatibility
     sqlite_db_path: Optional[str] = None  # Legacy field for backward compatibility
+    
+    # Classifier configuration
+    # classifier_type: Determines which classifier wrapper to use for model inference
+    #   - 'simple_classifier': Uses SimpleClassifierWrapper for models trained with
+    #                          train_strad_classifier.py. This is a lightweight wrapper
+    #                          that loads models directly without InferenceEngine overhead.
+    #   - 'inference_engine': Uses DLClassifierWrapper for legacy InferenceEngine-based
+    #                         models. This supports the complex InferenceEngine architecture.
+    # Default: 'inference_engine' for backward compatibility
+    classifier_type: str = "inference_engine"
+    
     dl_model_config: Dict = field(default_factory=dict)
 
 
@@ -285,6 +296,17 @@ class ConfigurationManager:
             # If using local_folder, kitti, or sqlite, fallback_data_path should be set
             if config.fallback_data_source in ['local_folder', 'kitti'] and not config.fallback_data_path:
                 errors.append(f"fallback_data_path must be set when fallback_data_source is '{config.fallback_data_source}'")
+        
+        # Validate classifier_type
+        # This ensures only supported classifier types are specified in the configuration
+        valid_classifier_types = ['simple_classifier', 'inference_engine']
+        if config.classifier_type not in valid_classifier_types:
+            errors.append(
+                f"classifier_type must be one of {valid_classifier_types}, "
+                f"got: {config.classifier_type}. "
+                f"Use 'simple_classifier' for models trained with train_strad_classifier.py "
+                f"or 'inference_engine' for legacy InferenceEngine models."
+            )
         
         return errors
     
