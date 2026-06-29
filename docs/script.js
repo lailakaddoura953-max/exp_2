@@ -822,6 +822,15 @@ async function runInference() {
     // Parse the JSON response
     const data = await response.json();
     
+    // DEBUG: Log the response to console
+    console.log('=== INFERENCE RESPONSE DEBUG ===');
+    console.log('Response data:', data);
+    console.log('Has misalignment_probability?', 'misalignment_probability' in data);
+    console.log('Has classification?', 'classification' in data);
+    console.log('Has confidence?', 'confidence' in data);
+    console.log('Mode:', data.mode);
+    console.log('================================');
+    
     // Hide loading modal
     hideLoadingModal();
     

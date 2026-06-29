@@ -151,47 +151,56 @@ def get_recent_strads():
             })
         
         # Query recent classifications from database
-        conn = db_interface._get_connection()
-        cursor = conn.cursor()
-        
-        query = """
-            SELECT TOP (?) 
-                strad_id, 
-                classification, 
-                confidence, 
-                snapshot_path, 
-                timestamp
-            FROM classification_results
-        """
-        
-        params = [limit]
-        
-        if severity_filter:
-            query += " WHERE classification = ?"
-            params.append(severity_filter)
-        
-        query += " ORDER BY timestamp DESC"
-        
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        cursor.close()
-        
-        results = []
-        for row in rows:
-            results.append({
-                'strad_id': row[0],
-                'classification': row[1],
-                'confidence': float(row[2]),
-                'snapshot_path': row[3],
-                'timestamp': row[4].isoformat() if row[4] else None,
-                'has_snapshot': bool(row[3])
+        try:
+            conn = db_interface._get_connection()
+            cursor = conn.cursor()
+            
+            query = """
+                SELECT TOP (?) 
+                    strad_id, 
+                    classification, 
+                    confidence, 
+                    snapshot_path, 
+                    timestamp
+                FROM classification_results
+            """
+            
+            params = [limit]
+            
+            if severity_filter:
+                query += " WHERE classification = ?"
+                params.append(severity_filter)
+            
+            query += " ORDER BY timestamp DESC"
+            
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            cursor.close()
+            
+            results = []
+            for row in rows:
+                results.append({
+                    'strad_id': row[0],
+                    'classification': row[1],
+                    'confidence': float(row[2]),
+                    'snapshot_path': row[3],
+                    'timestamp': row[4].isoformat() if row[4] else None,
+                    'has_snapshot': bool(row[3])
+                })
+            
+            return jsonify({
+                'success': True,
+                'data': results,
+                'count': len(results)
             })
-        
-        return jsonify({
-            'success': True,
-            'data': results,
-            'count': len(results)
-        })
+        except Exception as db_error:
+            # Table doesn't exist or query failed - return empty data
+            print(f"⚠ Database query failed: {db_error}")
+            return jsonify({
+                'success': True,
+                'data': [],
+                'message': 'Database table not available - using placeholder mode'
+            })
     
     except Exception as e:
         return jsonify({
@@ -277,37 +286,52 @@ def get_strad_stats():
                 'message': 'Database not connected - using placeholder mode'
             })
         
-        conn = db_interface._get_connection()
-        cursor = conn.cursor()
-        
-        # Count by severity
-        cursor.execute("""
-            SELECT classification, COUNT(*) 
-            FROM classification_results 
-            GROUP BY classification
-        """)
-        severity_counts = {row[0]: row[1] for row in cursor.fetchall()}
-        
-        # Count last 24 hours
-        cursor.execute("""
-            SELECT COUNT(*) 
-            FROM classification_results 
-            WHERE timestamp >= DATEADD(hour, -24, GETDATE())
-        """)
-        last_24h = cursor.fetchone()[0]
-        
-        cursor.close()
-        
-        return jsonify({
-            'success': True,
-            'stats': {
-                'total': sum(severity_counts.values()),
-                'none': severity_counts.get('none', 0),
-                'moderate': severity_counts.get('moderate', 0),
-                'critical': severity_counts.get('critical', 0),
-                'last_24h': last_24h
-            }
-        })
+        try:
+            conn = db_interface._get_connection()
+            cursor = conn.cursor()
+            
+            # Count by severity
+            cursor.execute("""
+                SELECT classification, COUNT(*) 
+                FROM classification_results 
+                GROUP BY classification
+            """)
+            severity_counts = {row[0]: row[1] for row in cursor.fetchall()}
+            
+            # Count last 24 hours
+            cursor.execute("""
+                SELECT COUNT(*) 
+                FROM classification_results 
+                WHERE timestamp >= DATEADD(hour, -24, GETDATE())
+            """)
+            last_24h = cursor.fetchone()[0]
+            
+            cursor.close()
+            
+            return jsonify({
+                'success': True,
+                'stats': {
+                    'total': sum(severity_counts.values()),
+                    'none': severity_counts.get('none', 0),
+                    'moderate': severity_counts.get('moderate', 0),
+                    'critical': severity_counts.get('critical', 0),
+                    'last_24h': last_24h
+                }
+            })
+        except Exception as db_error:
+            # Table doesn't exist or query failed
+            print(f"⚠ Database query failed: {db_error}")
+            return jsonify({
+                'success': True,
+                'stats': {
+                    'total': 0,
+                    'none': 0,
+                    'moderate': 0,
+                    'critical': 0,
+                    'last_24h': 0
+                },
+                'message': 'Database table not available - using placeholder mode'
+            })
     
     except Exception as e:
         return jsonify({
@@ -418,15 +442,22 @@ def run_single_image_inference():
     Uses real DL classifier if available
     """
     try:
+        print("\n=== SINGLE IMAGE INFERENCE DEBUG ===")
+        print(f"Request files: {list(request.files.keys())}")
+        
         file = request.files['image']
         
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
+        print(f"File received: {file.filename}")
+        
         # Read and process image
         image_bytes = file.read()
         image = Image.open(io.BytesIO(image_bytes))
         image_array = np.array(image)
+        
+        print(f"Image shape: {image_array.shape}")
         
         # Ensure RGB
         if len(image_array.shape) == 2:
@@ -434,11 +465,14 @@ def run_single_image_inference():
         elif image_array.shape[2] == 4:
             image_array = image_array[:, :, :3]
         
+        print(f"Classifier available: {dl_classifier is not None}")
+        
         # Use real classifier if available
         if dl_classifier:
+            print("Using REAL CLASSIFIER")
             result = dl_classifier.classify_snapshot(image_array)
             
-            return jsonify({
+            response_data = {
                 'success': True,
                 'classification': result.severity,
                 'confidence': float(result.confidence),
@@ -446,13 +480,17 @@ def run_single_image_inference():
                 'description': get_severity_description(result.severity, result.confidence),
                 'timestamp': datetime.now().isoformat(),
                 'mode': 'real_classifier'
-            })
+            }
+            print(f"Response: {response_data}")
+            print("====================================\n")
+            return jsonify(response_data)
         else:
+            print("Using MOCK CLASSIFIER")
             # Mock classification
             mock_confidence = 0.75
             mock_severity = 'none'
             
-            return jsonify({
+            response_data = {
                 'success': True,
                 'classification': mock_severity,
                 'confidence': mock_confidence,
@@ -460,9 +498,14 @@ def run_single_image_inference():
                 'description': get_severity_description(mock_severity, mock_confidence),
                 'timestamp': datetime.now().isoformat(),
                 'mode': 'mock'
-            })
+            }
+            print(f"Response: {response_data}")
+            print("====================================\n")
+            return jsonify(response_data)
     
     except Exception as e:
+        print(f"ERROR in run_single_image_inference: {e}")
+        print("====================================\n")
         return jsonify({
             'error': f'Single image inference failed: {str(e)}'
         }), 500
