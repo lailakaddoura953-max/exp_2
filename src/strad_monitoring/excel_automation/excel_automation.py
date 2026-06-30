@@ -206,7 +206,12 @@ class ExcelAutomation:
             worksheet = self.workbook.ActiveSheet
             logger.debug(f"Using worksheet: {worksheet.Name}")
             
-            # Requirement 2.2: Locate "spreader video encoder" control using OLEObjects()
+            # Requirement 2.2: Locate "spreader video encoder" control
+            # NOTE: This is a WORKAROUND for Excel files that use VBA macros with InputBox
+            # The proper solution would be to modify the VBA macro to accept parameters
+            # See EXCEL_AUTOMATION_LIMITATIONS.md for details
+            
+            # First, try the original approach (ActiveX/OLE controls)
             video_encoder_control = None
             ole_objects = worksheet.OLEObjects()
             
@@ -223,10 +228,10 @@ class ExcelAutomation:
                     logger.info(f"Found video encoder control: {control_name}")
                     break
             
+            # If no OLE control found, try to find a Shape button and use macro approach
             if not video_encoder_control:
-                error_msg = "Could not locate 'spreader video encoder' control in worksheet"
-                logger.error(error_msg)
-                return False
+                logger.info("No ActiveX control found, attempting to use VBA macro approach")
+                return self._run_macro_with_inputbox(strad_id)
             
             # Requirement 2.3: Insert CHE_Number (SCXXX format) into control
             # Try multiple properties to set the value (different ActiveX controls use different properties)
@@ -287,4 +292,117 @@ class ExcelAutomation:
             
         except Exception as e:
             logger.error(f"Error opening video feed for {strad_id}: {e}")
+            return False
+
+    def _run_macro_with_inputbox(self, strad_id: str) -> bool:
+        """
+        WORKAROUND: Run VBA macro that shows InputBox, automate the dialog.
+        
+        This is a temporary solution for Excel files that use VBA macros
+        with InputBox dialogs that block automation. The proper solution
+        is to modify the VBA macro to accept parameters.
+        
+        This method:
+        1. Runs the OPEN_CAMERAS macro in a background thread
+        2. Waits for the InputBox dialog to appear
+        3. Sends keystrokes to type the strad ID
+        4. Sends Enter to submit
+        
+        Args:
+            strad_id: Strad ID to enter (e.g., "SC001")
+            
+        Returns:
+            True if VLC window opened successfully, False otherwise
+            
+        Limitations:
+            - Fragile: Can break if window focus changes
+            - Timing-dependent: May fail if system is slow
+            - Not thread-safe: Cannot run multiple instances
+            
+        See EXCEL_AUTOMATION_LIMITATIONS.md for details and proper solution.
+        """
+        logger.warning(
+            f"Using InputBox automation workaround for strad {strad_id}. "
+            "This is a temporary solution. See EXCEL_AUTOMATION_LIMITATIONS.md"
+        )
+        
+        try:
+            import threading
+            
+            # Start the macro in a background thread so it doesn't block
+            def run_macro():
+                try:
+                    self.excel_app.Run("OPEN_CAMERAS")
+                except Exception as e:
+                    logger.error(f"Macro execution error: {e}")
+            
+            macro_thread = threading.Thread(target=run_macro, daemon=True)
+            macro_thread.start()
+            
+            # Wait for InputBox to appear and automate it
+            logger.info("Waiting for InputBox dialog...")
+            time.sleep(1.0)  # Give macro time to show InputBox
+            
+            # Find the InputBox window
+            input_box_found = False
+            max_attempts = 10
+            
+            for attempt in range(max_attempts):
+                # Try to find window with "Enter SC #" title (from the InputBox)
+                hwnd = win32gui.FindWindow(None, "Enter SC #")
+                
+                if hwnd:
+                    logger.info(f"Found InputBox window (HWND: {hwnd})")
+                    input_box_found = True
+                    
+                    # Bring window to foreground
+                    win32gui.SetForegroundWindow(hwnd)
+                    time.sleep(0.2)
+                    
+                    # Send keystrokes to type the strad ID
+                    shell = win32com.client.Dispatch("WScript.Shell")
+                    
+                    # Type the strad ID
+                    shell.SendKeys(strad_id, 0)
+                    time.sleep(0.2)
+                    
+                    # Send Enter key
+                    shell.SendKeys("{ENTER}", 0)
+                    logger.info(f"Sent '{strad_id}' to InputBox and pressed Enter")
+                    
+                    break
+                
+                time.sleep(0.5)
+            
+            if not input_box_found:
+                logger.error("InputBox dialog not found within timeout")
+                return False
+            
+            # Now wait for VLC window to appear (same as original code)
+            logger.info(f"Polling for VLC window (timeout: {self.timeout_seconds}s)")
+            start_time = time.time()
+            vlc_window_found = False
+            
+            while time.time() - start_time < self.timeout_seconds:
+                vlc_hwnd = win32gui.FindWindow("Qt5QWindowIcon", None)
+                if not vlc_hwnd:
+                    vlc_hwnd = win32gui.FindWindow(None, "VLC media player")
+                
+                if vlc_hwnd:
+                    logger.info(f"VLC window found (HWND: {vlc_hwnd})")
+                    vlc_window_found = True
+                    break
+                
+                time.sleep(0.5)
+            
+            if not vlc_window_found:
+                elapsed = time.time() - start_time
+                logger.warning(f"VLC window not found after {elapsed:.1f}s timeout")
+                return False
+            
+            logger.info(f"Video feed opened successfully for strad: {strad_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"InputBox automation failed: {e}")
             return False
