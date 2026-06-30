@@ -332,7 +332,43 @@ class ExcelAutomation:
             # Start the macro in a background thread so it doesn't block
             def run_macro():
                 try:
-                    self.excel_app.Run("OPEN_CAMERAS")
+                    # Try different ways to call the macro
+                    # Method 1: Simple name
+                    try:
+                        self.excel_app.Run("OPEN_CAMERAS")
+                        logger.info("Macro called successfully (Method 1: Simple name)")
+                        return
+                    except Exception as e1:
+                        logger.debug(f"Method 1 failed: {e1}")
+                    
+                    # Method 2: With workbook name
+                    try:
+                        workbook_name = self.workbook.Name
+                        self.excel_app.Run(f"'{workbook_name}'!OPEN_CAMERAS")
+                        logger.info("Macro called successfully (Method 2: With workbook)")
+                        return
+                    except Exception as e2:
+                        logger.debug(f"Method 2 failed: {e2}")
+                    
+                    # Method 3: With module name (common pattern)
+                    try:
+                        self.excel_app.Run("Sheet1.OPEN_CAMERAS")
+                        logger.info("Macro called successfully (Method 3: With sheet)")
+                        return
+                    except Exception as e3:
+                        logger.debug(f"Method 3 failed: {e3}")
+                    
+                    # Method 4: Try lowercase
+                    try:
+                        self.excel_app.Run("open_cameras")
+                        logger.info("Macro called successfully (Method 4: Lowercase)")
+                        return
+                    except Exception as e4:
+                        logger.debug(f"Method 4 failed: {e4}")
+                    
+                    # All methods failed
+                    raise Exception(f"All macro calling methods failed. Last errors: {e1}, {e2}, {e3}, {e4}")
+                    
                 except Exception as e:
                     logger.error(f"Macro execution error: {e}")
             
@@ -341,11 +377,11 @@ class ExcelAutomation:
             
             # Wait for InputBox to appear and automate it
             logger.info("Waiting for InputBox dialog...")
-            time.sleep(1.0)  # Give macro time to show InputBox
+            time.sleep(2.0)  # Give macro more time to show InputBox (increased from 1.0)
             
             # Find the InputBox window
             input_box_found = False
-            max_attempts = 10
+            max_attempts = 20  # Increased from 10 to give more time
             
             for attempt in range(max_attempts):
                 # Try to find window with "Enter SC #" title (from the InputBox)
