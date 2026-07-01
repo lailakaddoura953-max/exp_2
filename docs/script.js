@@ -1074,5 +1074,223 @@ function resetInference() {
 }
 
 // ==============================================================================
-// End of script
+// End of original script
 // ==============================================================================
+
+// ==============================================================================
+// LIVE MONITORING INTEGRATION
+// ==============================================================================
+// Loads real images from monitoring cycles and augmented dataset.
+// Updates active camera count. Provides strad detail modals.
+
+/**
+ * Load active camera count from backend and update the stat card
+ */
+async function loadActiveCameraCount() {
+    try {
+        const response = await fetch(`${BACKEND_API_URL}/live/active-camera-count`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const countEl = document.getElementById('activeCameraCount');
+            if (countEl) {
+                countEl.textContent = data.available;
+                countEl.title = `${data.total_strads} total - ${data.critical_excluded} critical excluded`;
+            }
+        }
+    } catch (error) {
+        console.log('Could not load active camera count:', error);
+        const countEl = document.getElementById('activeCameraCount');
+        if (countEl) countEl.textContent = '135';
+    }
+}
+
+/**
+ * Load and display live/augmented images in the grid
+ */
+async function refreshLiveImages() {
+    const grid = document.getElementById('liveImageGrid');
+    if (!grid) return;
+    
+    const sourceFilter = document.getElementById('liveSourceFilter')?.value || 'auto';
+    const severityFilter = document.getElementById('liveSeverityFilter')?.value || '';
+    
+    grid.innerHTML = '<p class="loading-text">Loading images...</p>';
+    
+    try {
+        let url = `${BACKEND_API_URL}/live/images?source=${sourceFilter}&limit=12`;
+        if (severityFilter) url += `&severity=${severityFilter}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (!data.success || data.count === 0) {
+            grid.innerHTML = '<p class="no-data-text">No images available. Run a monitoring cycle first, or check that SCFootage_augmented dataset exists.</p>';
+            return;
+        }
+        
+        grid.innerHTML = '';
+        
+        data.data.forEach(img => {
+            const card = document.createElement('div');
+            card.className = `live-image-card severity-${img.classification}`;
+            
+            const severityBadge = img.classification === 'critical' ? '🔴' :
+                                  img.classification === 'moderate' ? '🟡' : '🟢';
+            
+            const confidenceText = img.confidence > 0 ? `${(img.confidence * 100).toFixed(1)}%` : '--';
+            
+            card.innerHTML = `
+                <div class="live-image-wrapper">
+                    <img src="${BACKEND_API_URL}/live/image/${img.filename}" 
+                         alt="${img.strad_id}" 
+                         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22><rect fill=%22%23333%22 width=%22200%22 height=%22150%22/><text fill=%22%23999%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22>No Image</text></svg>'" />
+                </div>
+                <div class="live-image-info">
+                    <div class="live-image-header">
+                        <span class="live-strad-id">${severityBadge} ${img.strad_id}</span>
+                        <span class="live-source-badge ${img.source}">${img.source}</span>
+                    </div>
+                    <div class="live-image-meta">
+                        <span>Confidence: ${confidenceText}</span>
+                        ${img.timestamp ? `<span>${new Date(img.timestamp).toLocaleString()}</span>` : ''}
+                    </div>
+                    <div class="live-image-actions">
+                        <button class="btn btn-sm" onclick="showStradDetails('${img.strad_id}')">Details</button>
+                        <button class="btn btn-sm" onclick="copyIpAddress('${img.strad_id}')">Copy IP</button>
+                    </div>
+                </div>
+            `;
+            
+            grid.appendChild(card);
+        });
+        
+    } catch (error) {
+        console.error('Failed to load live images:', error);
+        grid.innerHTML = '<p class="no-data-text">Backend not available. Start the Flask server on localhost:5000.</p>';
+    }
+}
+
+/**
+ * Show detailed monitoring info for a specific strad
+ */
+async function showStradDetails(stradId) {
+    const modal = document.getElementById('stradDetailModal');
+    const title = document.getElementById('stradDetailTitle');
+    const body = document.getElementById('stradDetailBody');
+    
+    if (!modal || !body) return;
+    
+    title.textContent = `Strad ${stradId} - Details`;
+    body.innerHTML = '<p>Loading...</p>';
+    modal.classList.add('active');
+    
+    try {
+        const response = await fetch(`${BACKEND_API_URL}/live/strad-details/${stradId}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            body.innerHTML = '<p>Failed to load details.</p>';
+            return;
+        }
+        
+        const d = data.data;
+        let html = '<div class="strad-detail-content">';
+        
+        // Basic info
+        html += '<div class="detail-section">';
+        html += `<h3>Strad Information</h3>`;
+        html += `<table class="detail-table">`;
+        html += `<tr><td><strong>Strad ID:</strong></td><td>${d.strad_id}</td></tr>`;
+        html += `<tr><td><strong>IP Address:</strong></td><td>${d.ip_address || 'N/A'} <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${d.ip_address || ''}')">📋 Copy</button></td></tr>`;
+        html += `<tr><td><strong>Last Checked:</strong></td><td>${d.last_checked ? new Date(d.last_checked).toLocaleString() : 'Never'}</td></tr>`;
+        html += `<tr><td><strong>Status:</strong></td><td>${d.is_critical ? '🔴 CRITICAL (Excluded from cycling)' : '🟢 Active'}</td></tr>`;
+        html += `</table>`;
+        html += '</div>';
+        
+        // Critical info
+        if (d.is_critical && d.critical_info) {
+            html += '<div class="detail-section critical-section">';
+            html += `<h3>⚠️ Critical Exclusion</h3>`;
+            html += `<table class="detail-table">`;
+            html += `<tr><td><strong>Marked Critical:</strong></td><td>${new Date(d.critical_info.timestamp).toLocaleString()}</td></tr>`;
+            html += `<tr><td><strong>Reason:</strong></td><td>${d.critical_info.reason || 'N/A'}</td></tr>`;
+            html += `</table>`;
+            html += '</div>';
+        }
+        
+        // Classification history
+        if (d.classifications && d.classifications.length > 0) {
+            html += '<div class="detail-section">';
+            html += `<h3>Classification History (Last ${d.classifications.length})</h3>`;
+            html += '<table class="detail-table history-table">';
+            html += '<tr><th>Time</th><th>Classification</th><th>Confidence</th></tr>';
+            
+            d.classifications.forEach(c => {
+                const badge = c.classification === 'critical' ? '🔴' :
+                              c.classification === 'moderate' ? '🟡' : '🟢';
+                const time = c.timestamp ? new Date(c.timestamp).toLocaleString() : '--';
+                const conf = c.confidence ? `${(c.confidence * 100).toFixed(1)}%` : '--';
+                html += `<tr><td>${time}</td><td>${badge} ${c.classification}</td><td>${conf}</td></tr>`;
+            });
+            
+            html += '</table>';
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        body.innerHTML = html;
+        
+    } catch (error) {
+        body.innerHTML = `<p>Error loading details: ${error.message}</p>`;
+    }
+}
+
+/**
+ * Copy IP address for a strad to clipboard
+ */
+async function copyIpAddress(stradId) {
+    try {
+        const response = await fetch(`${BACKEND_API_URL}/live/strad-details/${stradId}`);
+        const data = await response.json();
+        
+        if (data.success && data.data.ip_address) {
+            await navigator.clipboard.writeText(data.data.ip_address);
+            alert(`IP address copied: ${data.data.ip_address}`);
+        } else {
+            alert(`No IP address found for ${stradId}`);
+        }
+    } catch (error) {
+        alert(`Failed to get IP: ${error.message}`);
+    }
+}
+
+/**
+ * Close the strad detail modal
+ */
+function closeStradDetailModal() {
+    const modal = document.getElementById('stradDetailModal');
+    if (modal) modal.classList.remove('active');
+}
+
+// Initialize live monitoring features on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load active camera count
+    loadActiveCameraCount();
+    
+    // Load live images
+    setTimeout(refreshLiveImages, 1000);  // Slight delay to let backend connection establish
+    
+    // Escape key closes strad detail modal too
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeStradDetailModal();
+        }
+    });
+    
+    // Filter change listeners
+    const sourceFilter = document.getElementById('liveSourceFilter');
+    const severityFilter = document.getElementById('liveSeverityFilter');
+    if (sourceFilter) sourceFilter.addEventListener('change', refreshLiveImages);
+    if (severityFilter) severityFilter.addEventListener('change', refreshLiveImages);
+});

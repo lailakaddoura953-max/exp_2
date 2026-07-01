@@ -35,8 +35,8 @@
             <div class="stat-card">
                
                 <div class="stat-content">
-                    <div class="stat-value">4</div>
-                    <div class="stat-label">Active Cameras</div>
+                    <div class="stat-value" id="activeCameraCount">--</div>
+                    <div class="stat-label">Active Strads Available</div>
                 </div>
             </div>
             <div class="stat-card">
@@ -430,6 +430,52 @@
             <button class="btn btn-secondary" onclick="cancelInference()">
                 Cancel
             </button>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- LIVE MONITORING PANEL (below main content)                          -->
+    <!-- Shows real screenshots from monitoring cycles + augmented fallback  -->
+    <!-- ================================================================== -->
+    <section class="live-monitoring-section" id="liveMonitoringSection">
+        <div class="container">
+            <h2>📷 Live Monitoring Feed</h2>
+            <p class="section-subtitle">
+                Real screenshots from monitoring cycles. Falls back to augmented dataset samples when no live data is available.
+            </p>
+            
+            <div class="live-controls">
+                <select id="liveSourceFilter">
+                    <option value="auto">Auto (Live → Augmented fallback)</option>
+                    <option value="live">Live Only</option>
+                    <option value="augmented">Augmented Dataset Only</option>
+                </select>
+                <select id="liveSeverityFilter">
+                    <option value="">All Severities</option>
+                    <option value="none">None (Aligned)</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="critical">Critical</option>
+                </select>
+                <button class="btn btn-secondary" onclick="refreshLiveImages()">🔄 Refresh</button>
+            </div>
+            
+            <div id="liveImageGrid" class="live-image-grid">
+                <!-- Populated dynamically -->
+                <p class="loading-text">Loading images...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Strad Details Modal -->
+    <div id="stradDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="stradDetailTitle">Strad Details</h2>
+                <button class="modal-close" onclick="closeStradDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="stradDetailBody">
+                <!-- Populated dynamically -->
+            </div>
         </div>
     </div>
 

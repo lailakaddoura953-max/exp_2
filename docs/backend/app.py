@@ -535,6 +535,337 @@ def model_status():
         'strad_monitoring_available': STRAD_MONITORING_AVAILABLE
     })
 
+
+@app.route('/api/live/images', methods=['GET'])
+def get_live_images():
+    """
+    Get real images for the web app display.
+    
+    Priority:
+    1. Live critical images from permanent_snapshots (most recent cycle results)
+    2. Augmented dataset images (SCFootage_augmented) as fallback
+    3. Empty list if neither available
+    
+    Query params:
+        - source: 'live', 'augmented', or 'auto' (default: auto)
+        - limit: Number of images (default 10)
+        - severity: Filter by severity (optional)
+    
+    Returns list of image records with strad_id, classification, path, source
+    """
+    try:
+        source = request.args.get('source', 'auto')
+        limit = request.args.get('limit', 10, type=int)
+        severity_filter = request.args.get('severity', None)
+        
+        images = []
+        
+        # Source 1: Live images from local state + permanent snapshots
+        if source in ('live', 'auto'):
+            images = _get_live_images(limit, severity_filter)
+        
+        # Source 2: Augmented dataset images as fallback
+        if (source == 'augmented') or (source == 'auto' and len(images) == 0):
+            augmented = _get_augmented_images(limit, severity_filter)
+            if source == 'augmented':
+                images = augmented
+            else:
+                images.extend(augmented)
+        
+        # Cap to limit
+        images = images[:limit]
+        
+        return jsonify({
+            'success': True,
+            'data': images,
+            'count': len(images),
+            'source': 'live' if any(i['source'] == 'live' for i in images) else 'augmented'
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/live/image/<path:filename>', methods=['GET'])
+def serve_live_image(filename):
+    """
+    Serve an image file by filename from known image directories.
+    Checks permanent snapshots, temp snapshots, and augmented dataset.
+    """
+    try:
+        # Search paths in priority order
+        search_paths = []
+        if config:
+            search_paths.append(Path(config.permanent_snapshot_path))
+            search_paths.append(Path(config.temp_snapshot_path))
+        
+        # Augmented dataset paths
+        for aug_dir in ['SCFootage_augmented', 'video_data', 'test_data']:
+            aug_path = project_root / aug_dir
+            if aug_path.exists():
+                search_paths.append(aug_path)
+        
+        # Search for the file
+        for search_dir in search_paths:
+            # Direct match
+            candidate = search_dir / filename
+            if candidate.exists():
+                return send_file(str(candidate), mimetype='image/jpeg')
+            
+            # Recursive search (one level deep for date folders)
+            for sub in search_dir.iterdir():
+                if sub.is_dir():
+                    candidate = sub / filename
+                    if candidate.exists():
+                        return send_file(str(candidate), mimetype='image/jpeg')
+        
+        return jsonify({'error': f'Image not found: {filename}'}), 404
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/live/active-camera-count', methods=['GET'])
+def get_active_camera_count():
+    """
+    Get the current number of strads available in the cycling pool.
+    Total strads (from ip_addresses.json) minus critical exclusions.
+    """
+    try:
+        total_strads = 0
+        critical_count = 0
+        critical_list = []
+        
+        # Get total from IP address loader
+        try:
+            from strad_monitoring.config.ip_address_loader import IPAddressLoader
+            ip_path = str(project_root / getattr(config, 'ip_addresses_json_path', 'config/ip_addresses.json')) if config else str(project_root / 'config/ip_addresses.json')
+            
+            if os.path.exists(ip_path):
+                loader = IPAddressLoader(ip_path)
+                total_strads = len(loader.get_all_mappings())
+        except Exception as e:
+            print(f"⚠ Could not load IP addresses: {e}")
+            total_strads = 135  # fallback default
+        
+        # Get critical exclusions from local state
+        try:
+            from strad_monitoring.database.local_state_store import LocalStateStore
+            state_path = str(project_root / 'data' / 'monitoring_state.json')
+            if os.path.exists(state_path):
+                local_state = LocalStateStore(state_path)
+                critical_list = local_state.get_critical_exclusions()
+                critical_count = len(critical_list)
+        except Exception as e:
+            print(f"⚠ Could not load local state: {e}")
+        
+        available = total_strads - critical_count
+        
+        return jsonify({
+            'success': True,
+            'total_strads': total_strads,
+            'critical_excluded': critical_count,
+            'available': available,
+            'critical_strads': critical_list
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/live/strad-details/<strad_id>', methods=['GET'])
+def get_strad_details(strad_id):
+    """
+    Get detailed monitoring information for a specific strad.
+    Pulls from local state store (monitoring_state.json):
+    - Classification history
+    - When it was marked critical (if applicable)
+    - Cycle info, confidence, processing time
+    - IP address for reference
+    """
+    try:
+        details = {
+            'strad_id': strad_id,
+            'ip_address': None,
+            'classifications': [],
+            'is_critical': False,
+            'critical_info': None,
+            'last_checked': None
+        }
+        
+        # Get IP address
+        try:
+            from strad_monitoring.config.ip_address_loader import IPAddressLoader
+            ip_path = str(project_root / getattr(config, 'ip_addresses_json_path', 'config/ip_addresses.json')) if config else str(project_root / 'config/ip_addresses.json')
+            if os.path.exists(ip_path):
+                loader = IPAddressLoader(ip_path)
+                details['ip_address'] = loader.get_ip(strad_id)
+        except Exception:
+            pass
+        
+        # Get data from local state
+        try:
+            from strad_monitoring.database.local_state_store import LocalStateStore
+            state_path = str(project_root / 'data' / 'monitoring_state.json')
+            if os.path.exists(state_path):
+                local_state = LocalStateStore(state_path)
+                
+                # Check if critical
+                critical_exclusions = local_state._state.get('critical_exclusions', {})
+                if strad_id in critical_exclusions:
+                    details['is_critical'] = True
+                    details['critical_info'] = critical_exclusions[strad_id]
+                
+                # Get classification history for this strad
+                all_results = local_state._state.get('classification_results', [])
+                strad_results = [r for r in all_results if r.get('strad_id') == strad_id]
+                details['classifications'] = strad_results[-10:]  # Last 10
+                
+                # Get last checked time
+                check_history = local_state._state.get('check_history', {})
+                if strad_id in check_history:
+                    details['last_checked'] = check_history[strad_id]
+        except Exception as e:
+            print(f"⚠ Could not load strad details: {e}")
+        
+        return jsonify({
+            'success': True,
+            'data': details
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _get_live_images(limit, severity_filter=None):
+    """Get images from live monitoring results (permanent snapshots + local state)."""
+    images = []
+    
+    try:
+        from strad_monitoring.database.local_state_store import LocalStateStore
+        state_path = str(project_root / 'data' / 'monitoring_state.json')
+        
+        if not os.path.exists(state_path):
+            return images
+        
+        local_state = LocalStateStore(state_path)
+        results = local_state._state.get('classification_results', [])
+        
+        # Filter by severity if requested
+        if severity_filter:
+            results = [r for r in results if r.get('classification') == severity_filter]
+        
+        # Get most recent results that have snapshot paths
+        for result in reversed(results):
+            snapshot_path = result.get('snapshot_path')
+            if snapshot_path and Path(snapshot_path).exists():
+                images.append({
+                    'strad_id': result.get('strad_id', 'Unknown'),
+                    'classification': result.get('classification', 'unknown'),
+                    'confidence': result.get('confidence', 0.0),
+                    'timestamp': result.get('timestamp', ''),
+                    'filename': Path(snapshot_path).name,
+                    'source': 'live'
+                })
+            
+            if len(images) >= limit:
+                break
+    except Exception as e:
+        print(f"⚠ Error getting live images: {e}")
+    
+    # Also check permanent_snapshots directory directly
+    if len(images) < limit and config:
+        try:
+            perm_path = Path(config.permanent_snapshot_path)
+            if perm_path.exists():
+                jpg_files = sorted(perm_path.rglob("*.jpg"), key=os.path.getmtime, reverse=True)
+                for jpg in jpg_files[:limit - len(images)]:
+                    # Extract strad_id from filename (SC{id}_{date}_{time}.jpg)
+                    name = jpg.stem
+                    parts = name.split('_')
+                    strad_id = parts[0] if parts else 'Unknown'
+                    
+                    if not any(i['filename'] == jpg.name for i in images):
+                        images.append({
+                            'strad_id': strad_id,
+                            'classification': 'critical',  # permanent = critical
+                            'confidence': 0.0,
+                            'timestamp': datetime.fromtimestamp(jpg.stat().st_mtime).isoformat(),
+                            'filename': jpg.name,
+                            'source': 'live'
+                        })
+        except Exception as e:
+            print(f"⚠ Error scanning permanent snapshots: {e}")
+    
+    return images[:limit]
+
+
+def _get_augmented_images(limit, severity_filter=None):
+    """Get sample images from the augmented dataset as fallback."""
+    images = []
+    
+    # Look for augmented dataset directories
+    augmented_dirs = [
+        project_root / 'SCFootage_augmented',
+        project_root / 'video_data',
+        project_root / 'test_data',
+    ]
+    
+    for aug_dir in augmented_dirs:
+        if not aug_dir.exists():
+            continue
+        
+        try:
+            # Look for image files
+            extensions = ['*.jpg', '*.jpeg', '*.png']
+            all_files = []
+            for ext in extensions:
+                all_files.extend(aug_dir.rglob(ext))
+            
+            # Sort by name for consistency
+            all_files.sort(key=lambda f: f.name)
+            
+            for img_file in all_files[:limit]:
+                # Try to determine classification from path/filename
+                classification = 'unknown'
+                name_lower = str(img_file).lower()
+                if 'critical' in name_lower or 'misaligned' in name_lower:
+                    classification = 'critical'
+                elif 'moderate' in name_lower:
+                    classification = 'moderate'
+                elif 'none' in name_lower or 'normal' in name_lower or 'aligned' in name_lower:
+                    classification = 'none'
+                
+                if severity_filter and classification != severity_filter:
+                    continue
+                
+                # Extract strad_id from filename if possible
+                strad_id = 'Sample'
+                name = img_file.stem
+                if name.startswith('SC'):
+                    strad_id = name.split('_')[0]
+                
+                images.append({
+                    'strad_id': strad_id,
+                    'classification': classification,
+                    'confidence': 0.0,
+                    'timestamp': '',
+                    'filename': img_file.name,
+                    'source': 'augmented'
+                })
+                
+                if len(images) >= limit:
+                    break
+            
+            if images:
+                break  # Found images in this directory
+                
+        except Exception as e:
+            print(f"⚠ Error scanning {aug_dir}: {e}")
+            continue
+    
+    return images[:limit]
+
 if __name__ == '__main__':
     print("=" * 60)
     print("Camera Misalignment Detection - Backend API")
