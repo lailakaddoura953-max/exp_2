@@ -28,11 +28,13 @@ def test_invalid_classifier_type_production_mode():
     # Create config with invalid classifier_type
     config = SystemConfig(
         database_connection_string="Driver={SQL Server};Server=test;Database=test;Trusted_Connection=yes;",
-        excel_file_path="test.xlsx",
+        ip_addresses_json_path="test_ip_addresses.json",
         model_checkpoint_path="test_model.pth",
         temp_snapshot_path="temp",
         permanent_snapshot_path="permanent",
         log_file_path="test.log",
+        web_viewer_username="test_user",
+        web_viewer_password="test_pass",
         cycle_schedule_cron="0 * * * *",
         strad_selection_count=10,
         cooldown_hours=24,
@@ -50,8 +52,8 @@ def test_invalid_classifier_type_production_mode():
     
     # Mock all component initializations to isolate classifier initialization
     with patch('src.strad_monitoring.orchestration.orchestrator.DatabaseInterface'), \
-         patch('src.strad_monitoring.orchestration.orchestrator.ExcelAutomation'), \
-         patch('src.strad_monitoring.orchestration.orchestrator.VLCCapture'), \
+         patch('src.strad_monitoring.orchestration.orchestrator.IPAddressLoader'), \
+         patch('src.strad_monitoring.orchestration.orchestrator.WebCapture'), \
          patch('src.strad_monitoring.orchestration.orchestrator.StorageManager'), \
          patch('src.strad_monitoring.orchestration.orchestrator.ModerateClassificationTracker'), \
          patch('src.strad_monitoring.orchestration.orchestrator.ConfirmationHandler'):
@@ -80,11 +82,13 @@ def test_invalid_classifier_type_testing_mode():
     # Create config with invalid classifier_type but testing mode enabled
     config = SystemConfig(
         database_connection_string="Driver={SQL Server};Server=test;Database=test;Trusted_Connection=yes;",
-        excel_file_path="test.xlsx",
+        ip_addresses_json_path="test_ip_addresses.json",
         model_checkpoint_path="test_model.pth",
         temp_snapshot_path="temp",
         permanent_snapshot_path="permanent",
         log_file_path="test.log",
+        web_viewer_username="test_user",
+        web_viewer_password="test_pass",
         cycle_schedule_cron="0 * * * *",
         strad_selection_count=10,
         cooldown_hours=24,
@@ -102,8 +106,8 @@ def test_invalid_classifier_type_testing_mode():
     
     # Mock all component initializations except classifier
     with patch('src.strad_monitoring.orchestration.orchestrator.DatabaseInterface'), \
-         patch('src.strad_monitoring.orchestration.orchestrator.ExcelAutomation'), \
-         patch('src.strad_monitoring.orchestration.orchestrator.VLCCapture'), \
+         patch('src.strad_monitoring.orchestration.orchestrator.IPAddressLoader'), \
+         patch('src.strad_monitoring.orchestration.orchestrator.WebCapture'), \
          patch('src.strad_monitoring.orchestration.orchestrator.StorageManager'), \
          patch('src.strad_monitoring.orchestration.orchestrator.ModerateClassificationTracker'), \
          patch('src.strad_monitoring.orchestration.orchestrator.ConfirmationHandler'):
@@ -129,11 +133,13 @@ def test_missing_checkpoint_production_mode():
     # Create config pointing to non-existent checkpoint file
     config = SystemConfig(
         database_connection_string="Driver={SQL Server};Server=test;Database=test;Trusted_Connection=yes;",
-        excel_file_path="test.xlsx",
+        ip_addresses_json_path="test_ip_addresses.json",
         model_checkpoint_path="nonexistent_model.pth",  # File doesn't exist
         temp_snapshot_path="temp",
         permanent_snapshot_path="permanent",
         log_file_path="test.log",
+        web_viewer_username="test_user",
+        web_viewer_password="test_pass",
         cycle_schedule_cron="0 * * * *",
         strad_selection_count=10,
         cooldown_hours=24,
@@ -151,8 +157,8 @@ def test_missing_checkpoint_production_mode():
     
     # Mock all component initializations to isolate classifier initialization
     with patch('src.strad_monitoring.orchestration.orchestrator.DatabaseInterface'), \
-         patch('src.strad_monitoring.orchestration.orchestrator.ExcelAutomation'), \
-         patch('src.strad_monitoring.orchestration.orchestrator.VLCCapture'), \
+         patch('src.strad_monitoring.orchestration.orchestrator.IPAddressLoader'), \
+         patch('src.strad_monitoring.orchestration.orchestrator.WebCapture'), \
          patch('src.strad_monitoring.orchestration.orchestrator.StorageManager'), \
          patch('src.strad_monitoring.orchestration.orchestrator.ModerateClassificationTracker'), \
          patch('src.strad_monitoring.orchestration.orchestrator.ConfirmationHandler'):
@@ -180,11 +186,13 @@ def test_missing_checkpoint_testing_mode():
     # Create config pointing to non-existent checkpoint file
     config = SystemConfig(
         database_connection_string="Driver={SQL Server};Server=test;Database=test;Trusted_Connection=yes;",
-        excel_file_path="test.xlsx",
+        ip_addresses_json_path="test_ip_addresses.json",
         model_checkpoint_path="nonexistent_model.pth",  # File doesn't exist
         temp_snapshot_path="temp",
         permanent_snapshot_path="permanent",
         log_file_path="test.log",
+        web_viewer_username="test_user",
+        web_viewer_password="test_pass",
         cycle_schedule_cron="0 * * * *",
         strad_selection_count=10,
         cooldown_hours=24,
@@ -202,8 +210,8 @@ def test_missing_checkpoint_testing_mode():
     
     # Mock all component initializations except classifier
     with patch('src.strad_monitoring.orchestration.orchestrator.DatabaseInterface'), \
-         patch('src.strad_monitoring.orchestration.orchestrator.ExcelAutomation'), \
-         patch('src.strad_monitoring.orchestration.orchestrator.VLCCapture'), \
+         patch('src.strad_monitoring.orchestration.orchestrator.IPAddressLoader'), \
+         patch('src.strad_monitoring.orchestration.orchestrator.WebCapture'), \
          patch('src.strad_monitoring.orchestration.orchestrator.StorageManager'), \
          patch('src.strad_monitoring.orchestration.orchestrator.ModerateClassificationTracker'), \
          patch('src.strad_monitoring.orchestration.orchestrator.ConfirmationHandler'):
@@ -244,11 +252,13 @@ def test_valid_classifier_type_with_checkpoint():
         # Create config with valid classifier_type and existing checkpoint
         config = SystemConfig(
             database_connection_string="Driver={SQL Server};Server=test;Database=test;Trusted_Connection=yes;",
-            excel_file_path="test.xlsx",
+            ip_addresses_json_path="test_ip_addresses.json",
             model_checkpoint_path=str(checkpoint_path),
             temp_snapshot_path="temp",
             permanent_snapshot_path="permanent",
             log_file_path="test.log",
+            web_viewer_username="test_user",
+            web_viewer_password="test_pass",
             cycle_schedule_cron="0 * * * *",
             strad_selection_count=10,
             cooldown_hours=24,
@@ -266,8 +276,8 @@ def test_valid_classifier_type_with_checkpoint():
         
         # Mock all component initializations except classifier
         with patch('src.strad_monitoring.orchestration.orchestrator.DatabaseInterface'), \
-             patch('src.strad_monitoring.orchestration.orchestrator.ExcelAutomation'), \
-             patch('src.strad_monitoring.orchestration.orchestrator.VLCCapture'), \
+             patch('src.strad_monitoring.orchestration.orchestrator.IPAddressLoader'), \
+             patch('src.strad_monitoring.orchestration.orchestrator.WebCapture'), \
              patch('src.strad_monitoring.orchestration.orchestrator.StorageManager'), \
              patch('src.strad_monitoring.orchestration.orchestrator.ModerateClassificationTracker'), \
              patch('src.strad_monitoring.orchestration.orchestrator.ConfirmationHandler'):

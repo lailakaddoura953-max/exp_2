@@ -12,7 +12,8 @@
 # - Training: NVIDIA GPU with 8GB+ VRAM (CUDA 6.1+) or AMD GPU with ROCm
 # - Inference: NVIDIA GPU with 4GB+ VRAM or NVIDIA Jetson (Xavier, Orin)
 # - System RAM: 16GB for training, 8GB for inference
-# - Platform: Windows 10/11 (required for Excel COM automation and VLC capture)
+# - Platform: Windows 10/11 (recommended; screenshot capture is via headless
+#   Chromium through Playwright, no OS-specific automation required)
 # - GPU: CUDA 11.7+ (required for DL inference)
 # ==============================================================================
 
@@ -144,21 +145,27 @@ pyodbc>=5.0.0
 # ------------------------------------------------------------------------------
 # Windows COM Automation (Windows-only)
 # ------------------------------------------------------------------------------
-# pywin32 provides Windows-specific functionality:
-# - Excel COM automation (win32com.client)
-# - Window management (win32gui)
-# - Windows API access
+# pywin32 provides Windows-specific functionality (win32com.client, win32gui).
+# No longer required by the active monitoring orchestrator (which now uses
+# WebCapture/Playwright), but kept as a dependency because the standalone
+# legacy modules src/strad_monitoring/excel_automation and
+# src/strad_monitoring/vlc_capture still import it and have their own tests.
 # Note: Only available on Windows platform
 pywin32>=306; sys_platform == 'win32'
 
 # ------------------------------------------------------------------------------
-# GUI Automation and Screen Capture
+# Headless Browser Automation (Web-Based Screenshot Capture)
 # ------------------------------------------------------------------------------
-# PyAutoGUI for screenshot capture:
-# - VLC window snapshot capture
-# - Screen region capture
-# - Cross-platform support
-pyautogui>=0.9.54
+# Playwright drives a headless Chromium browser to navigate to each Axis
+# camera's web viewer page, log in via the username/password form, and
+# capture a full-window screenshot. Replaces Excel COM automation and direct
+# RTSP frame-grabbing (RTSP access to these Axis encoders was confirmed
+# unreliable - browser access fails outright, and VLC only shows a single
+# corner of the feed for the same RTSP path).
+#
+# After `pip install playwright`, the browser binary must be installed once:
+#   playwright install chromium
+playwright>=1.40.0
 
 # ------------------------------------------------------------------------------
 # Task Scheduling
@@ -204,16 +211,16 @@ pytest-cov>=4.1.0
 # Verify ODBC driver installation:
 #   python -c "import pyodbc; print(pyodbc.drivers())"
 #
-# Excel COM Automation:
-# Requires Microsoft Excel to be installed on the system.
-# The system uses COM automation to control Excel spreadsheets.
-#
-# VLC Media Player:
-# Requires VLC Media Player to be installed for video feed capture.
-# Download from: https://www.videolan.org/vlc/
+# Web-Based Screenshot Capture (Playwright):
+# Screenshots are captured by driving a headless Chromium browser to each
+# camera's IP address (looked up from ip_addresses.json), logging into the
+# Axis web viewer page, and taking a full-window screenshot. No Excel or
+# VLC installation is required for this. After installing the playwright
+# Python package, run `playwright install chromium` once to download the
+# browser binary.
 #
 # Platform Requirements:
-# - Windows 10 or Windows 11 (required for Excel COM and VLC capture)
+# - Windows 10 or Windows 11 (recommended)
 # - Python 3.10 or 3.11 (compatibility with PyTorch 2.0+)
 # - CUDA 11.7+ (for deep learning inference)
 #

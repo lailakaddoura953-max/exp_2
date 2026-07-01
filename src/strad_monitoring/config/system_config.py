@@ -29,11 +29,17 @@ class SystemConfig:
     database_connection_string: str
     
     # File paths (required)
-    excel_file_path: str
+    ip_addresses_json_path: str
     model_checkpoint_path: str
     temp_snapshot_path: str
     permanent_snapshot_path: str
     log_file_path: str
+    
+    # Web viewer login credentials (required)
+    # Used to log into the Axis camera web viewer page (plain username/password
+    # form, not browser-native HTTP Basic Auth) before capturing a screenshot.
+    web_viewer_username: str
+    web_viewer_password: str
     
     # Timing configuration (required)
     cycle_schedule_cron: str
@@ -49,9 +55,14 @@ class SystemConfig:
     
     # Optional fields with defaults (MUST come after all required fields)
     strad_query_sql_file: str = "strad_query.sql"  # SQL query file for strad selection
-    rtsp_username: Optional[str] = None
-    rtsp_password: Optional[str] = None
     enable_local_testing_mode: bool = True
+    
+    # Web capture configuration (optional, sensible defaults)
+    web_capture_timeout_seconds: int = 45
+    web_capture_stabilization_delay_seconds: float = 3.0
+    web_capture_max_retries: int = 3
+    web_viewport_width: int = 1280
+    web_viewport_height: int = 800
     fallback_data_path: Optional[str] = None
     fallback_data_source: str = "random"  # Options: "kitti", "local_folder", "random", "sqlite"
     use_sqlite_fallback: bool = False  # Legacy field for backward compatibility
@@ -205,11 +216,13 @@ class ConfigurationManager:
         # Validate required fields are non-empty
         required_fields = [
             'database_connection_string',
-            'excel_file_path',
+            'ip_addresses_json_path',
             'model_checkpoint_path',
             'temp_snapshot_path',
             'permanent_snapshot_path',
-            'log_file_path'
+            'log_file_path',
+            'web_viewer_username',
+            'web_viewer_password'
         ]
         
         for field_name in required_fields:
@@ -231,7 +244,7 @@ class ConfigurationManager:
         # Validate file paths exist (skip if using environment variables that aren't set yet)
         # In local testing mode, model checkpoint path is optional
         paths_to_check = {
-            'excel_file_path': config.excel_file_path,
+            'ip_addresses_json_path': config.ip_addresses_json_path,
         }
         
         # Only validate model checkpoint if not in local testing mode

@@ -48,7 +48,7 @@ def main():
     print("Getting a test strad ID from database...")
     try:
         # Get one strad from the database
-        strads = orchestrator.strad_selector.select_strads_for_monitoring(count=1)
+        strads = orchestrator.db_interface.get_eligible_strads(count=1)
         
         if not strads:
             print("ERROR: No strads available in database")
@@ -88,7 +88,8 @@ def main():
             print()
             print("=" * 80)
             print()
-            print("NOTE: This is expected if VLC/Excel automation isn't available.")
+            print("NOTE: This is expected if the camera at this strad's IP address")
+            print("isn't reachable/available in this environment (web capture failure).")
             print("The important thing is that the orchestrator initialized correctly")
             print("with SimpleClassifierWrapper (check startup logs above).")
             print("=" * 80)

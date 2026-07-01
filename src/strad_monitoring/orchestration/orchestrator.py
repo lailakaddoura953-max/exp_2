@@ -22,17 +22,17 @@ import signal
 import sys
 import time
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import torch
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from ..config.system_config import ConfigurationManager, SystemConfig
+from ..config.ip_address_loader import IPAddressLoader
 from ..logging.logging_system import LoggingSystem
 from ..database.database_interface import DatabaseInterface
-from ..excel_automation.excel_automation import ExcelAutomation
-from ..vlc_capture.vlc_capture import VLCCapture
+from ..video_capture.web_capture import WebCapture
 from ..dl_classifier.classifier_wrapper import DLClassifierWrapper
 from ..storage.storage_manager import StorageManager
 from ..database.moderate_tracker import ModerateClassificationTracker
@@ -51,8 +51,8 @@ class MonitoringOrchestrator:
         scheduler: APScheduler instance for hourly cycle scheduling
         logger: Logger instance for orchestrator operations
         db_interface: DatabaseInterface for database operations
-        excel_automation: ExcelAutomation for video feed control
-        vlc_capture: VLCCapture for snapshot capture
+        ip_loader: IPAddressLoader for strad ID -> camera IP lookup
+        web_capture: WebCapture for full-window screenshot capture via headless browser
         dl_classifier: DLClassifierWrapper for misalignment classification
         storage_manager: StorageManager for snapshot storage
         moderate_tracker: ModerateClassificationTracker for tracking moderate classifications
@@ -83,8 +83,8 @@ class MonitoringOrchestrator:
         self.logger = None
         self.scheduler = None
         self.db_interface = None
-        self.excel_automation = None
-        self.vlc_capture = None
+        self.ip_loader = None
+        self.web_capture = None
         self.dl_classifier = None
         self.storage_manager = None
         self.moderate_tracker = None
@@ -140,8 +140,8 @@ class MonitoringOrchestrator:
         
         Components initialized:
         1. DatabaseInterface - SQL Server connectivity
-        2. ExcelAutomation - Excel video encoder control
-        3. VLCCapture - VLC snapshot capture
+        2. IPAddressLoader - strad ID -> camera IP lookup from ip_addresses.json
+        3. WebCapture - full-window screenshot capture via headless browser
         4. DLClassifierWrapper - Deep learning classification
         5. StorageManager - Snapshot storage management
         6. ModerateClassificationTracker - Moderate classification tracking
@@ -168,32 +168,32 @@ class MonitoringOrchestrator:
             self.logger.error(f"  ✗ DatabaseInterface initialization failed: {e}")
             raise
         
-        # 2. Initialize ExcelAutomation
+        # 2. Initialize IPAddressLoader
         try:
-            self.logger.info("  Initializing ExcelAutomation...")
-            self.excel_automation = ExcelAutomation(
-                excel_file_path=self.config.excel_file_path,
-                timeout_seconds=30,
-                visible=False  # Keep Excel hidden to avoid UI flickering
-            )
-            self.logger.info("  ✓ ExcelAutomation initialized")
+            self.logger.info("  Initializing IPAddressLoader...")
+            self.ip_loader = IPAddressLoader(self.config.ip_addresses_json_path)
+            self.logger.info(f"  ✓ IPAddressLoader initialized ({len(self.ip_loader.get_all_mappings())} strads)")
         except Exception as e:
-            self.logger.error(f"  ✗ ExcelAutomation initialization failed: {e}")
+            self.logger.error(f"  ✗ IPAddressLoader initialization failed: {e}")
             raise
         
-        # 3. Initialize VLCCapture
+        # 3. Initialize WebCapture
         try:
-            self.logger.info("  Initializing VLCCapture...")
-            self.vlc_capture = VLCCapture(
-                stabilization_delay=5.0,  # 5 seconds for feed stabilization
+            self.logger.info("  Initializing WebCapture...")
+            self.web_capture = WebCapture(
+                username=self.config.web_viewer_username,
+                password=self.config.web_viewer_password,
+                timeout_seconds=getattr(self.config, 'web_capture_timeout_seconds', 45),
+                stabilization_delay_seconds=getattr(self.config, 'web_capture_stabilization_delay_seconds', 3.0),
+                max_retries=getattr(self.config, 'web_capture_max_retries', 3),
                 min_width=self.config.snapshot_min_width,
                 min_height=self.config.snapshot_min_height,
-                rtsp_username=getattr(self.config, 'rtsp_username', None),
-                rtsp_password=getattr(self.config, 'rtsp_password', None)
+                viewport_width=getattr(self.config, 'web_viewport_width', 1280),
+                viewport_height=getattr(self.config, 'web_viewport_height', 800)
             )
-            self.logger.info("  ✓ VLCCapture initialized")
+            self.logger.info("  ✓ WebCapture initialized")
         except Exception as e:
-            self.logger.error(f"  ✗ VLCCapture initialization failed: {e}")
+            self.logger.error(f"  ✗ WebCapture initialization failed: {e}")
             raise
         
         # 4. Initialize classifier (DLClassifierWrapper or SimpleClassifierWrapper)
@@ -544,20 +544,14 @@ class MonitoringOrchestrator:
         Cleanup all component resources.
         
         Ensures proper resource release for:
-        - Excel COM objects
         - Database connections
         - File handles
+        
+        Note: WebCapture launches/closes its browser per-capture (see
+        WebCapture._attempt_capture), so there is no persistent browser
+        resource to clean up here.
         """
         self.logger.info("Cleaning up component resources...")
-        
-        # Cleanup ExcelAutomation (COM objects)
-        if self.excel_automation:
-            try:
-                self.logger.info("  Cleaning up ExcelAutomation...")
-                self.excel_automation.cleanup()
-                self.logger.info("  ✓ ExcelAutomation cleaned up")
-            except Exception as e:
-                self.logger.error(f"  ✗ ExcelAutomation cleanup failed: {e}")
         
         # Cleanup DatabaseInterface (connections)
         if self.db_interface:
@@ -778,8 +772,8 @@ class MonitoringOrchestrator:
         Process one strad: capture, classify, store.
         
         This method orchestrates the complete workflow for processing a single strad:
-        1. Open video feed via Excel automation (Excel.open_video_feed)
-        2. Capture snapshot from VLC media player (VLC.capture_snapshot)
+        1. Look up the strad's camera IP address (IPAddressLoader.get_ip)
+        2. Capture a full-window screenshot from the camera's web viewer (WebCapture.capture_frame)
         3. Classify snapshot using DL model (DL.classify_snapshot)
         4. Handle result based on classification:
            - Critical: persist snapshot to permanent storage, store result with file path,
@@ -788,7 +782,7 @@ class MonitoringOrchestrator:
         5. Update check history with current timestamp
         6. Clear temporary snapshot
         
-        Implements retry logic for component failures (3 attempts with exponential backoff).
+        Implements retry logic for component failures (retries handled inside WebCapture).
         
         Args:
             strad_id: Strad CHE number in format SCXXX (e.g., "SC042")
@@ -822,19 +816,43 @@ class MonitoringOrchestrator:
         
         try:
             # =================================================================
-            # Step 1: Open video feed via Excel automation
+            # Step 1: Look up camera IP address for this strad
             # =================================================================
-            # Requirements: 2.1-2.6 (Excel video feed automation)
-            self.logger.info(f"  [1/6] Opening video feed for {strad_id}...")
+            self.logger.info(f"  [1/6] Looking up camera IP for {strad_id}...")
+            
+            ip_address = self.ip_loader.get_ip(strad_id)
+            if not ip_address:
+                # Strad returned by the DB query has no entry in ip_addresses.json
+                # (e.g. typo, or strad added to DB but not yet added to the IP list).
+                # Skip this strad rather than crashing the cycle.
+                error_msg = f"No IP address mapping found for {strad_id} in ip_addresses.json"
+                self.logger.warning(f"  ✗ {strad_id}: {error_msg}")
+                return {
+                    'strad_id': strad_id,
+                    'success': False,
+                    'error': error_msg,
+                    'classification': None,
+                    'confidence': 0.0,
+                    'processing_time_seconds': time.time() - strad_start_time
+                }
+            
+            self.logger.info(f"  ✓ {strad_id} -> {ip_address}")
+            
+            # =================================================================
+            # Step 2: Capture full-window screenshot from camera web viewer
+            # =================================================================
+            self.logger.info(f"  [2/6] Capturing screenshot for {strad_id} at {ip_address}...")
             
             try:
-                # Retry logic implemented inside open_video_feed (3 attempts)
-                video_feed_opened = self.excel_automation.open_video_feed(strad_id)
+                # Retry logic and login handling implemented inside WebCapture
+                screenshot_path, capture_success = self.web_capture.capture_frame(
+                    ip_address=ip_address,
+                    strad_id=strad_id,
+                    snapshot_dir=self.config.temp_snapshot_path
+                )
                 
-                if not video_feed_opened:
-                    # VLC window not found within timeout (30 seconds)
-                    # Requirement 2.6: discard strad for current cycle, retry later
-                    error_msg = "VLC window not found within timeout"
+                if not capture_success or not screenshot_path:
+                    error_msg = f"Web capture failed for {strad_id} at {ip_address}"
                     self.logger.warning(f"  ✗ {strad_id}: {error_msg}")
                     return {
                         'strad_id': strad_id,
@@ -845,10 +863,11 @@ class MonitoringOrchestrator:
                         'processing_time_seconds': time.time() - strad_start_time
                     }
                 
-                self.logger.info(f"  ✓ Video feed opened for {strad_id}")
+                temp_snapshot_path = screenshot_path
+                self.logger.info(f"  ✓ Screenshot captured: {temp_snapshot_path}")
                 
             except Exception as e:
-                error_msg = f"Excel automation failed: {e}"
+                error_msg = f"Web capture failed: {e}"
                 self.logger.error(f"  ✗ {strad_id}: {error_msg}")
                 return {
                     'strad_id': strad_id,
@@ -860,43 +879,19 @@ class MonitoringOrchestrator:
                 }
             
             # =================================================================
-            # Step 2: Capture snapshot from VLC media player
+            # Step 3: Load captured screenshot into memory for classification
             # =================================================================
-            # Requirements: 3.1-3.6 (VLC snapshot capture with retry)
-            self.logger.info(f"  [2/6] Capturing snapshot for {strad_id}...")
+            self.logger.info(f"  [3/6] Loading captured screenshot...")
             
             try:
-                # Includes stabilization delay and 3 retry attempts
-                snapshot = self.vlc_capture.capture_snapshot()
-                self.logger.info(
-                    f"  ✓ Snapshot captured: {snapshot.shape[1]}x{snapshot.shape[0]} pixels"
-                )
+                from PIL import Image
+                import numpy as np
+                
+                with Image.open(temp_snapshot_path) as pil_image:
+                    snapshot = np.array(pil_image.convert('RGB'))
+                self.logger.debug(f"  ✓ Screenshot loaded: {snapshot.shape}")
             except Exception as e:
-                error_msg = f"VLC capture failed: {e}"
-                self.logger.error(f"  ✗ {strad_id}: {error_msg}")
-                return {
-                    'strad_id': strad_id,
-                    'success': False,
-                    'error': error_msg,
-                    'classification': None,
-                    'confidence': 0.0,
-                    'processing_time_seconds': time.time() - strad_start_time
-                }
-            
-            # =================================================================
-            # Step 3: Store snapshot temporarily
-            # =================================================================
-            # Requirements: 5.1 (temporary storage)
-            self.logger.info(f"  [3/6] Storing snapshot temporarily...")
-            
-            try:
-                temp_snapshot_path = self.storage_manager.store_temporary_snapshot(
-                    strad_id=strad_id,
-                    snapshot=snapshot
-                )
-                self.logger.debug(f"  ✓ Temporary snapshot: {temp_snapshot_path}")
-            except Exception as e:
-                error_msg = f"Temporary storage failed: {e}"
+                error_msg = f"Failed to load captured screenshot: {e}"
                 self.logger.error(f"  ✗ {strad_id}: {error_msg}")
                 return {
                     'strad_id': strad_id,

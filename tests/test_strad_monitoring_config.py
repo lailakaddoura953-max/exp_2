@@ -28,11 +28,13 @@ class TestClassifierTypeConfiguration:
         """Create a valid base configuration dictionary"""
         return {
             "database_connection_string": "DSN=TestDB;UID=test;PWD=test",
-            "excel_file_path": str(tmp_path / "test.xlsx"),
+            "ip_addresses_json_path": str(tmp_path / "ip_addresses.json"),
             "model_checkpoint_path": str(tmp_path / "model.pth"),
             "temp_snapshot_path": str(tmp_path / "temp"),
             "permanent_snapshot_path": str(tmp_path / "snapshots"),
             "log_file_path": str(tmp_path / "logs" / "app.log"),
+            "web_viewer_username": "test_user",
+            "web_viewer_password": "test_pass",
             "cycle_schedule_cron": "0 * * * *",
             "strad_selection_count": 10,
             "cooldown_hours": 2,
@@ -44,11 +46,15 @@ class TestClassifierTypeConfiguration:
             "enable_local_testing_mode": True
         }
     
+    def _touch_ip_addresses_file(self, tmp_path):
+        """Create a placeholder ip_addresses.json so path-existence checks pass"""
+        ip_path = tmp_path / "ip_addresses.json"
+        ip_path.write_text("SC#\tIP_Address\n001\t192.168.1.100\n")
+        return ip_path
+    
     def test_default_classifier_type_is_inference_engine(self, tmp_path, valid_base_config):
         """Test that classifier_type defaults to 'inference_engine'"""
-        # Create test Excel file
-        excel_path = tmp_path / "test.xlsx"
-        excel_path.touch()
+        self._touch_ip_addresses_file(tmp_path)
         
         # Save config file
         config_file = tmp_path / "config.json"
@@ -63,9 +69,7 @@ class TestClassifierTypeConfiguration:
     
     def test_valid_classifier_type_simple_classifier(self, tmp_path, valid_base_config):
         """Test that 'simple_classifier' is accepted as valid"""
-        # Create test Excel file
-        excel_path = tmp_path / "test.xlsx"
-        excel_path.touch()
+        self._touch_ip_addresses_file(tmp_path)
         
         # Add classifier_type
         valid_base_config['classifier_type'] = 'simple_classifier'
@@ -83,9 +87,7 @@ class TestClassifierTypeConfiguration:
     
     def test_valid_classifier_type_inference_engine(self, tmp_path, valid_base_config):
         """Test that 'inference_engine' is accepted as valid"""
-        # Create test Excel file
-        excel_path = tmp_path / "test.xlsx"
-        excel_path.touch()
+        self._touch_ip_addresses_file(tmp_path)
         
         # Add classifier_type
         valid_base_config['classifier_type'] = 'inference_engine'
@@ -103,9 +105,7 @@ class TestClassifierTypeConfiguration:
     
     def test_invalid_classifier_type_rejected(self, tmp_path, valid_base_config):
         """Test that invalid classifier_type values are rejected"""
-        # Create test Excel file
-        excel_path = tmp_path / "test.xlsx"
-        excel_path.touch()
+        self._touch_ip_addresses_file(tmp_path)
         
         # Add invalid classifier_type
         valid_base_config['classifier_type'] = 'invalid_classifier'
@@ -128,9 +128,7 @@ class TestClassifierTypeConfiguration:
     
     def test_invalid_classifier_type_empty_string(self, tmp_path, valid_base_config):
         """Test that empty string classifier_type is rejected"""
-        # Create test Excel file
-        excel_path = tmp_path / "test.xlsx"
-        excel_path.touch()
+        self._touch_ip_addresses_file(tmp_path)
         
         # Add empty classifier_type
         valid_base_config['classifier_type'] = ''
@@ -149,9 +147,7 @@ class TestClassifierTypeConfiguration:
     
     def test_invalid_classifier_type_misspelled(self, tmp_path, valid_base_config):
         """Test that misspelled classifier_type values are rejected"""
-        # Create test Excel file
-        excel_path = tmp_path / "test.xlsx"
-        excel_path.touch()
+        self._touch_ip_addresses_file(tmp_path)
         
         invalid_values = [
             'SimpleClassifier',  # Wrong capitalization
@@ -187,11 +183,13 @@ class TestSystemConfigDataclass:
         # Create minimal config
         config = SystemConfig(
             database_connection_string="DSN=TestDB",
-            excel_file_path="test.xlsx",
+            ip_addresses_json_path="ip_addresses.json",
             model_checkpoint_path="model.pth",
             temp_snapshot_path="temp",
             permanent_snapshot_path="snapshots",
             log_file_path="logs/app.log",
+            web_viewer_username="test_user",
+            web_viewer_password="test_pass",
             cycle_schedule_cron="0 * * * *",
             strad_selection_count=10,
             cooldown_hours=2,
@@ -210,11 +208,13 @@ class TestSystemConfigDataclass:
         """Test that classifier_type can be set to valid values"""
         config = SystemConfig(
             database_connection_string="DSN=TestDB",
-            excel_file_path="test.xlsx",
+            ip_addresses_json_path="ip_addresses.json",
             model_checkpoint_path="model.pth",
             temp_snapshot_path="temp",
             permanent_snapshot_path="snapshots",
             log_file_path="logs/app.log",
+            web_viewer_username="test_user",
+            web_viewer_password="test_pass",
             cycle_schedule_cron="0 * * * *",
             strad_selection_count=10,
             cooldown_hours=2,
@@ -236,11 +236,13 @@ class TestConfigurationValidation:
         """Test that validate_config checks classifier_type"""
         config = SystemConfig(
             database_connection_string="DSN=TestDB",
-            excel_file_path="test.xlsx",
+            ip_addresses_json_path="ip_addresses.json",
             model_checkpoint_path="model.pth",
             temp_snapshot_path="temp",
             permanent_snapshot_path="snapshots",
             log_file_path="logs/app.log",
+            web_viewer_username="test_user",
+            web_viewer_password="test_pass",
             cycle_schedule_cron="0 * * * *",
             strad_selection_count=10,
             cooldown_hours=2,
@@ -269,11 +271,13 @@ class TestConfigurationValidation:
         for valid_type in ['simple_classifier', 'inference_engine']:
             config = SystemConfig(
                 database_connection_string="DSN=TestDB",
-                excel_file_path="test.xlsx",
+                ip_addresses_json_path="ip_addresses.json",
                 model_checkpoint_path="model.pth",
                 temp_snapshot_path="temp",
                 permanent_snapshot_path="snapshots",
                 log_file_path="logs/app.log",
+                web_viewer_username="test_user",
+                web_viewer_password="test_pass",
                 cycle_schedule_cron="0 * * * *",
                 strad_selection_count=10,
                 cooldown_hours=2,

@@ -87,11 +87,15 @@ def create_test_config(classifier_type: str, checkpoint_path: str = None) -> Sys
         database_connection_string="DRIVER={ODBC Driver 17 for SQL Server};SERVER=test;DATABASE=Test;Trusted_Connection=yes",
         
         # Paths
-        excel_file_path=str(project_root / "test_excel.xlsx"),
+        ip_addresses_json_path=str(project_root / "test_ip_addresses.json"),
         model_checkpoint_path=checkpoint_path,
         temp_snapshot_path=str(project_root / "temp_snapshots"),
         permanent_snapshot_path=str(project_root / "permanent_snapshots"),
         log_file_path=str(project_root / "logs"),
+        
+        # Web viewer credentials
+        web_viewer_username="test_user",
+        web_viewer_password="test_pass",
         
         # Timing
         cycle_schedule_cron="0 * * * *",
@@ -274,11 +278,13 @@ def test_web_app_simple_classifier(results: TestResult):
         # Create test config file
         config_data = {
             "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=test;DATABASE=Test;Trusted_Connection=yes",
-            "excel_file_path": str(project_root / "test_excel.xlsx"),
+            "ip_addresses_json_path": str(project_root / "test_ip_addresses.json"),
             "model_checkpoint_path": checkpoint_path,
             "temp_snapshot_path": str(project_root / "temp_snapshots"),
             "permanent_snapshot_path": str(project_root / "permanent_snapshots"),
             "log_file_path": str(project_root / "logs"),
+            "web_viewer_username": "test_user",
+            "web_viewer_password": "test_pass",
             "cycle_schedule_cron": "0 * * * *",
             "strad_selection_count": 10,
             "cooldown_hours": 1,
@@ -368,11 +374,13 @@ def test_web_app_inference_engine(results: TestResult):
         # Create test config file
         config_data = {
             "database_connection_string": "DRIVER={ODBC Driver 17 for SQL Server};SERVER=test;DATABASE=Test;Trusted_Connection=yes",
-            "excel_file_path": str(project_root / "test_excel.xlsx"),
+            "ip_addresses_json_path": str(project_root / "test_ip_addresses.json"),
             "model_checkpoint_path": checkpoint_path,
             "temp_snapshot_path": str(project_root / "temp_snapshots"),
             "permanent_snapshot_path": str(project_root / "permanent_snapshots"),
             "log_file_path": str(project_root / "logs"),
+            "web_viewer_username": "test_user",
+            "web_viewer_password": "test_pass",
             "cycle_schedule_cron": "0 * * * *",
             "strad_selection_count": 10,
             "cooldown_hours": 1,
