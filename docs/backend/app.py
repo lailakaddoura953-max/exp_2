@@ -589,8 +589,9 @@ def get_live_images():
 @app.route('/api/live/image/<path:filename>', methods=['GET'])
 def serve_live_image(filename):
     """
-    Serve an image file by filename from known image directories.
-    Checks permanent snapshots, temp snapshots, and augmented dataset.
+    Serve an image file by relative path or filename from known image directories.
+    The filename may be a relative path like 'misaligned_critical/strad_042/image.png'
+    or a simple filename like 'SC042_20260701_100015.jpg'.
     """
     try:
         # Search paths in priority order
@@ -605,17 +606,22 @@ def serve_live_image(filename):
             if aug_path.exists():
                 search_paths.append(aug_path)
         
-        # Search for the file (recursive, up to 4 levels deep for SCFootage structure)
+        # Search for the file
         for search_dir in search_paths:
             if not search_dir.exists():
                 continue
-            # Try direct match
-            candidate = search_dir / filename
-            if candidate.exists():
-                return send_file(str(candidate), mimetype='image/jpeg')
             
-            # Recursive search
-            matches = list(search_dir.rglob(filename))
+            # Try as relative path from this directory (e.g., misaligned_critical/strad_042/image.png)
+            candidate = search_dir / filename
+            if candidate.exists() and candidate.is_file():
+                return send_file(str(candidate), mimetype='image/jpeg')
+        
+        # Fallback: search by basename only (for simple filenames)
+        basename = Path(filename).name
+        for search_dir in search_paths:
+            if not search_dir.exists():
+                continue
+            matches = list(search_dir.rglob(basename))
             if matches:
                 return send_file(str(matches[0]), mimetype='image/jpeg')
         
@@ -871,13 +877,14 @@ def _get_augmented_images(limit, severity_filter=None):
                     if not strad_folder.is_dir():
                         # Direct image in class folder (no strad subfolder)
                         if strad_folder.suffix.lower() in ['.jpg', '.jpeg', '.png']:
+                            rel_path = strad_folder.relative_to(dataset_dir)
                             strad_id = strad_folder.stem.split('_')[0] if '_' in strad_folder.stem else 'Sample'
                             images.append({
                                 'strad_id': strad_id.upper() if not strad_id.startswith('SC') else strad_id,
                                 'classification': classification,
                                 'confidence': 0.0,
                                 'timestamp': '',
-                                'filename': strad_folder.name,
+                                'filename': str(rel_path).replace('\\', '/'),
                                 'full_path': str(strad_folder),
                                 'source': 'augmented'
                             })
@@ -894,12 +901,14 @@ def _get_augmented_images(limit, severity_filter=None):
                     # Find images in strad folder
                     for img_file in sorted(strad_folder.iterdir()):
                         if img_file.suffix.lower() in ['.jpg', '.jpeg', '.png']:
+                            # Use relative path from dataset root as unique identifier
+                            rel_path = img_file.relative_to(dataset_dir)
                             images.append({
                                 'strad_id': strad_id,
                                 'classification': classification,
                                 'confidence': 0.0,
                                 'timestamp': '',
-                                'filename': img_file.name,
+                                'filename': str(rel_path).replace('\\', '/'),
                                 'full_path': str(img_file),
                                 'source': 'augmented'
                             })
