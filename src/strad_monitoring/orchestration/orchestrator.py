@@ -32,6 +32,7 @@ from ..config.system_config import ConfigurationManager, SystemConfig
 from ..config.ip_address_loader import IPAddressLoader
 from ..logging.logging_system import LoggingSystem
 from ..database.database_interface import DatabaseInterface
+from ..database.local_state_store import LocalStateStore
 from ..video_capture.web_capture import WebCapture
 from ..dl_classifier.classifier_wrapper import DLClassifierWrapper
 from ..storage.storage_manager import StorageManager
@@ -89,6 +90,7 @@ class MonitoringOrchestrator:
         self.storage_manager = None
         self.moderate_tracker = None
         self.confirmation_handler = None
+        self.local_state = None
         
         # Track orchestrator state
         self._is_running = False
@@ -166,6 +168,15 @@ class MonitoringOrchestrator:
             self.logger.info("  ✓ DatabaseInterface initialized")
         except Exception as e:
             self.logger.error(f"  ✗ DatabaseInterface initialization failed: {e}")
+            raise
+        
+        # 1b. Initialize LocalStateStore (JSON fallback for when DB writes fail)
+        try:
+            self.logger.info("  Initializing LocalStateStore...")
+            self.local_state = LocalStateStore("data/monitoring_state.json")
+            self.logger.info("  ✓ LocalStateStore initialized")
+        except Exception as e:
+            self.logger.error(f"  ✗ LocalStateStore initialization failed: {e}")
             raise
         
         # 2. Initialize IPAddressLoader
@@ -644,8 +655,14 @@ class MonitoringOrchestrator:
             self.logger.info("Querying database for eligible strads...")
             
             try:
+                # Request more strads than needed so local filtering doesn't shrink the batch.
+                # The remote query doesn't know about our local cooldown/exclusion state,
+                # so we over-fetch and trim after filtering.
+                local_exclusion_count = len(self.local_state.get_recently_checked(self.config.cooldown_hours)) + len(self.local_state.get_critical_exclusions())
+                fetch_count = self.config.strad_selection_count + local_exclusion_count
+                
                 eligible_strads = self.db_interface.get_eligible_strads(
-                    count=self.config.strad_selection_count
+                    count=fetch_count
                 )
                 self.logger.info(
                     f"Retrieved {len(eligible_strads)} eligible strads: {eligible_strads}"
@@ -663,6 +680,25 @@ class MonitoringOrchestrator:
                     'strad_results': [],
                     'error': str(e)
                 }
+            
+            # =================================================================
+            # Step 2: Process each strad serially
+            # =================================================================
+            # Step 1b: Filter by local state (cooldown + critical exclusions)
+            # =================================================================
+            # When DB write tables don't exist, the remote query can't filter
+            # by check history or critical exclusions. Apply local state as fallback.
+            original_count = len(eligible_strads)
+            eligible_strads = self.local_state.filter_eligible_strads(
+                eligible_strads, cooldown_hours=self.config.cooldown_hours
+            )
+            if len(eligible_strads) < original_count:
+                self.logger.info(
+                    f"Local state filtered: {original_count} → {len(eligible_strads)} eligible strads"
+                )
+            
+            # Cap to target selection count (we over-fetched to compensate for filtering)
+            eligible_strads = eligible_strads[:self.config.strad_selection_count]
             
             # =================================================================
             # Step 2: Process each strad serially
@@ -999,6 +1035,14 @@ class MonitoringOrchestrator:
                     self.logger.info(f"  ✓ Classification result stored in database")
                 except Exception as e:
                     self.logger.error(f"  ✗ Failed to store classification result: {e}")
+                    # Fallback: store in local JSON
+                    self.local_state.store_classification(
+                        strad_id=strad_id,
+                        classification=classification_result.severity,
+                        confidence=classification_result.confidence,
+                        snapshot_path=snapshot_path
+                    )
+                    self.logger.info(f"  ↪ Classification result stored in local state (fallback)")
                 
                 try:
                     # Add to critical exclusion list
@@ -1009,6 +1053,12 @@ class MonitoringOrchestrator:
                     self.logger.info(f"  ✓ {strad_id} added to critical exclusion list")
                 except Exception as e:
                     self.logger.error(f"  ✗ Failed to add to critical exclusion: {e}")
+                    # Fallback: store in local JSON
+                    self.local_state.add_critical_exclusion(
+                        strad_id=strad_id,
+                        reason=f"Critical misalignment (confidence: {classification_result.confidence:.3f})"
+                    )
+                    self.logger.info(f"  ↪ Critical exclusion stored in local state (fallback)")
                 
                 try:
                     # Track with moderate tracker (resets counter for critical)
@@ -1042,6 +1092,13 @@ class MonitoringOrchestrator:
                     self.logger.info(f"  ✓ Classification result stored in database")
                 except Exception as e:
                     self.logger.error(f"  ✗ Failed to store classification result: {e}")
+                    # Fallback: store in local JSON
+                    self.local_state.store_classification(
+                        strad_id=strad_id,
+                        classification=classification_result.severity,
+                        confidence=classification_result.confidence
+                    )
+                    self.logger.info(f"  ↪ Classification result stored in local state (fallback)")
                 
                 try:
                     # Track with moderate tracker (may trigger warning at 3 consecutive)
@@ -1066,6 +1123,9 @@ class MonitoringOrchestrator:
                 self.logger.info(f"  ✓ Check history updated for {strad_id}")
             except Exception as e:
                 self.logger.error(f"  ✗ Failed to update check history: {e}")
+                # Fallback: record in local JSON (enables cooldown filtering locally)
+                self.local_state.record_check(strad_id)
+                self.logger.info(f"  ↪ Check history recorded in local state (fallback)")
             
             try:
                 # Clear temporary snapshot
