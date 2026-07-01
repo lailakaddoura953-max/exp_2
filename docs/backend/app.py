@@ -600,24 +600,24 @@ def serve_live_image(filename):
             search_paths.append(Path(config.temp_snapshot_path))
         
         # Augmented dataset paths
-        for aug_dir in ['SCFootage_augmented', 'video_data', 'test_data']:
+        for aug_dir in ['SCFootage_augmented', 'SCFootage', 'video_data', 'test_data']:
             aug_path = project_root / aug_dir
             if aug_path.exists():
                 search_paths.append(aug_path)
         
-        # Search for the file
+        # Search for the file (recursive, up to 4 levels deep for SCFootage structure)
         for search_dir in search_paths:
-            # Direct match
+            if not search_dir.exists():
+                continue
+            # Try direct match
             candidate = search_dir / filename
             if candidate.exists():
                 return send_file(str(candidate), mimetype='image/jpeg')
             
-            # Recursive search (one level deep for date folders)
-            for sub in search_dir.iterdir():
-                if sub.is_dir():
-                    candidate = sub / filename
-                    if candidate.exists():
-                        return send_file(str(candidate), mimetype='image/jpeg')
+            # Recursive search
+            matches = list(search_dir.rglob(filename))
+            if matches:
+                return send_file(str(matches[0]), mimetype='image/jpeg')
         
         return jsonify({'error': f'Image not found: {filename}'}), 404
     
@@ -801,67 +801,118 @@ def _get_live_images(limit, severity_filter=None):
 
 
 def _get_augmented_images(limit, severity_filter=None):
-    """Get sample images from the augmented dataset as fallback."""
+    """Get sample images from the SCFootage dataset as fallback.
+    
+    Expected folder structure:
+        SCFootage/
+        ├── misaligned_critical/
+        │   └── strad_xxx/
+        │       └── image.png
+        ├── misaligned_moderate/
+        │   └── strad_xxx/
+        │       └── image.png
+        └── misaligned_none/
+            └── strad_xxx/
+                └── image.png
+    
+    Also checks SCFootage_augmented/ with same structure.
+    """
     images = []
     
-    # Look for augmented dataset directories
-    augmented_dirs = [
+    # Classification folder name → severity mapping
+    folder_to_severity = {
+        'misaligned_critical': 'critical',
+        'misaligned_moderate': 'moderate',
+        'misaligned_none': 'none',
+        'misaligned-critical': 'critical',
+        'misaligned-moderate': 'moderate',
+        'misaligned-none': 'none',
+    }
+    
+    # Search these dataset directories in order
+    dataset_dirs = [
         project_root / 'SCFootage_augmented',
+        project_root / 'SCFootage',
         project_root / 'video_data',
         project_root / 'test_data',
     ]
     
-    for aug_dir in augmented_dirs:
-        if not aug_dir.exists():
+    for dataset_dir in dataset_dirs:
+        if not dataset_dir.exists():
             continue
         
         try:
-            # Look for image files
-            extensions = ['*.jpg', '*.jpeg', '*.png']
-            all_files = []
-            for ext in extensions:
-                all_files.extend(aug_dir.rglob(ext))
-            
-            # Sort by name for consistency
-            all_files.sort(key=lambda f: f.name)
-            
-            for img_file in all_files[:limit]:
-                # Try to determine classification from path/filename
-                classification = 'unknown'
-                name_lower = str(img_file).lower()
-                if 'critical' in name_lower or 'misaligned' in name_lower:
-                    classification = 'critical'
-                elif 'moderate' in name_lower:
-                    classification = 'moderate'
-                elif 'none' in name_lower or 'normal' in name_lower or 'aligned' in name_lower:
-                    classification = 'none'
+            # Check for classification subfolders (misaligned_critical, etc.)
+            for class_folder in sorted(dataset_dir.iterdir()):
+                if not class_folder.is_dir():
+                    continue
                 
+                # Determine severity from folder name
+                folder_name = class_folder.name.lower()
+                classification = folder_to_severity.get(folder_name)
+                
+                if classification is None:
+                    # Try partial match
+                    if 'critical' in folder_name:
+                        classification = 'critical'
+                    elif 'moderate' in folder_name:
+                        classification = 'moderate'
+                    elif 'none' in folder_name or 'normal' in folder_name or 'aligned' in folder_name:
+                        classification = 'none'
+                    else:
+                        continue
+                
+                # Apply severity filter
                 if severity_filter and classification != severity_filter:
                     continue
                 
-                # Extract strad_id from filename if possible
-                strad_id = 'Sample'
-                name = img_file.stem
-                if name.startswith('SC'):
-                    strad_id = name.split('_')[0]
-                
-                images.append({
-                    'strad_id': strad_id,
-                    'classification': classification,
-                    'confidence': 0.0,
-                    'timestamp': '',
-                    'filename': img_file.name,
-                    'source': 'augmented'
-                })
-                
-                if len(images) >= limit:
-                    break
+                # Scan strad subfolders (strad_xxx/) for images
+                for strad_folder in sorted(class_folder.iterdir()):
+                    if not strad_folder.is_dir():
+                        # Direct image in class folder (no strad subfolder)
+                        if strad_folder.suffix.lower() in ['.jpg', '.jpeg', '.png']:
+                            strad_id = strad_folder.stem.split('_')[0] if '_' in strad_folder.stem else 'Sample'
+                            images.append({
+                                'strad_id': strad_id.upper() if not strad_id.startswith('SC') else strad_id,
+                                'classification': classification,
+                                'confidence': 0.0,
+                                'timestamp': '',
+                                'filename': strad_folder.name,
+                                'full_path': str(strad_folder),
+                                'source': 'augmented'
+                            })
+                        continue
+                    
+                    # Extract strad ID from folder name (e.g., "strad_042" → "SC042")
+                    folder_parts = strad_folder.name.split('_')
+                    if len(folder_parts) >= 2:
+                        strad_num = folder_parts[-1].zfill(3)
+                        strad_id = f"SC{strad_num}"
+                    else:
+                        strad_id = strad_folder.name
+                    
+                    # Find images in strad folder
+                    for img_file in sorted(strad_folder.iterdir()):
+                        if img_file.suffix.lower() in ['.jpg', '.jpeg', '.png']:
+                            images.append({
+                                'strad_id': strad_id,
+                                'classification': classification,
+                                'confidence': 0.0,
+                                'timestamp': '',
+                                'filename': img_file.name,
+                                'full_path': str(img_file),
+                                'source': 'augmented'
+                            })
+                            
+                            if len(images) >= limit:
+                                return images[:limit]
+                            break  # One image per strad folder is enough
             
             if images:
-                break  # Found images in this directory
+                return images[:limit]
                 
         except Exception as e:
-            print(f"⚠ Error scanning {aug_dir}: {e}")
+            print(f"⚠ Error scanning {dataset_dir}: {e}")
             continue
     
     return images[:limit]
