@@ -1147,8 +1147,11 @@ body {
 
 .live-monitoring-section {
     margin-top: 3rem;
-    padding: 2rem 0;
+    padding: 2rem;
     border-top: 2px solid var(--color-gray-200, #e5e7eb);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .live-monitoring-section h2 {
